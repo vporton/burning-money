@@ -24,7 +24,7 @@ contract Token is ERC20, Ownable, ERC2771Context {
     function mint(address account, uint256 amount) external onlyOwner {
         _mint(account, amount);
         address _referral = referrals[account];
-        _mint(_referral, amount / 4);  // 25% first level referral
+        _mint(_referral, amount / 4); // 25% first level referral
         _referral = referrals[_referral];
         _mint(_referral, amount / 5); // 10% second level referral
     }
