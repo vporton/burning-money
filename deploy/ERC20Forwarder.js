@@ -6,11 +6,17 @@ module.exports = async ({getNamedAccounts, deployments}) => {
     const networkName = hre.network.name;
     const addresses = fs.readFileSync('addresses.json')[networkName];
 
+    const ERC20Forwarder = await ethers.getContractFactory("ERC20Forwarder");
+    erc20Forwarder = await ERC20Forwarder.deploy(
+      await accounts[0].getAddress()
+    );
+    await erc20Forwarder.deployed();
+    
     const ERC20ForwarderProxy = await hre.ethers.getContractFactory("ERC20ForwarderProxy");
     erc20ForwarderProxy = await ERC20ForwarderProxy.deploy(
         erc20Forwarder.address,
-        await accounts[2].getAddress(), // FIXME
-        await accounts[0].getAddress() // FIXME
+        await accounts[2].getAddress(), // FIXME: admin
+        await accounts[0].getAddress(), // FIXME: owner
     );
     await erc20ForwarderProxy.deployed();
   
