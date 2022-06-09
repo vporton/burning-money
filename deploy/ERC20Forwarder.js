@@ -15,8 +15,8 @@ module.exports = async ({getNamedAccounts, deployments}) => {
     const ERC20ForwarderProxy = await hre.ethers.getContractFactory("ERC20ForwarderProxy");
     erc20ForwarderProxy = await ERC20ForwarderProxy.deploy(
         erc20Forwarder.address,
-        await accounts[2].getAddress(), // FIXME: admin
-        await accounts[0].getAddress(), // FIXME: owner
+        await accounts[0].getAddress(), // admin
+        await accounts[0].getAddress(), // owner
     );
     await erc20ForwarderProxy.deployed();
   
@@ -31,7 +31,7 @@ module.exports = async ({getNamedAccounts, deployments}) => {
     );
 
     Collateral = await ethers.getContractAt(
-        "contracts/5/token/erc20/IERC20.sol:IERC20",
+        "contracts/6/token/erc20/IERC20.sol:IERC20",
         addresses.collateral
       );
     await proxy.setTransferHandlerGas(addresses.collateral, 41672); // USDT
