@@ -12,23 +12,22 @@ contract Token is ERC20, Ownable, ERC2771Context {
     using ABDKMath64x64 for int128;
 
     mapping (address => address) public referrals;
-    IERC20 collateral;
+    mapping (IERC20 => int128) public collaterals; // token => growth rate
     address beneficiant;
-    int128 growthRate;
 
     constructor(
         address _trustedForwarder,
-        IERC20 _collateral,
         address _beneficiant,
-        int128 _growthRate,
         string memory _name,
         string memory _symbol
     )
         ERC2771Context(_trustedForwarder) ERC20(_name, _symbol)
     {
-        collateral = _collateral;
         beneficiant = _beneficiant;
-        growthRate = _growthRate;
+    }
+
+    function setCollateral(IERC20 _collateral, int128 _growthRate) public onlyOwner {
+        collaterals[_collateral] = _growthRate;
     }
 
     function changeBeneficiant(address _beneficiant) public onlyOwner {
@@ -48,10 +47,12 @@ contract Token is ERC20, Ownable, ERC2771Context {
         _mint(_referral, amount / 10); // 10% second level referral
     }
 
-    function buyForCollateral(address _account, uint256 _collateral_amount) public {
-        int128 ourTokenAmount = growthRate.mul(int128(uint128(block.timestamp))).exp_2();
-        _mint(_account, _collateral_amount * uint256(int256(ourTokenAmount)));
-        collateral.transfer(beneficiant, _collateral_amount);
+    function buyForCollateral(address _account, IERC20 _collateral, uint256 _collateral_amount) public {
+        int128 _growthRate = collaterals[_collateral];
+        require(_growthRate != 0, "Collateral not supported");
+        int128 _ourTokenAmount = _growthRate.mul(int128(uint128(block.timestamp))).exp_2();
+        _mint(_account, _collateral_amount * uint256(int256(_ourTokenAmount)));
+        _collateral.transfer(beneficiant, _collateral_amount);
     }
 
     function _msgSender() internal view virtual override(Context, ERC2771Context) returns (address) {
