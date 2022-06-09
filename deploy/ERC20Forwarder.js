@@ -5,12 +5,6 @@ module.exports = async ({getNamedAccounts, deployments}) => {
     const {deployer} = await getNamedAccounts();
     const networkName = hre.network.name;
     const addresses = fs.readFileSync('addresses.json')[networkName];
-    await deploy('Token', {
-        from: deployer,
-        args: [addresses.TrustedForwarder, addresses.beneficiant, "World Token", "WT"],
-        log: true,
-    });
-
 
     const ERC20ForwarderProxy = await hre.ethers.getContractFactory("ERC20ForwarderProxy");
     erc20ForwarderProxy = await ERC20ForwarderProxy.deploy(
@@ -30,8 +24,11 @@ module.exports = async ({getNamedAccounts, deployments}) => {
         forwarder.address
     );
 
-    await proxy.setTransferHandlerGas(USDT.address, 41672);
-
-    await USDT.approve(erc20ForwarderProxy.address, ethers.utils.parseEther("1000"));
+    Collateral = await ethers.getContractAt(
+        "contracts/5/token/erc20/IERC20.sol:IERC20",
+        addresses.collateral
+      );
+    await proxy.setTransferHandlerGas(addresses.collateral, 41672); // USDT
+    await Collateral.approve(erc20ForwarderProxy.address, ethers.utils.parseEther("1000"));
   };
-  module.exports.tags = ['Token'];
+  module.exports.tags = ['ERC20Forwarder'];
