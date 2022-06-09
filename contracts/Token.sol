@@ -8,7 +8,7 @@ import { ERC2771Context } from "@openzeppelin/contracts/metatx/ERC2771Context.so
 import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { ABDKMath64x64 } from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
-contract Token is ERC20, Ownable, ERC2771Context {
+contract Token is ERC20, ERC2771Context, Ownable {
     using ABDKMath64x64 for int128;
 
     mapping (address => address) public referrals;
