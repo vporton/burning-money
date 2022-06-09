@@ -17,12 +17,12 @@ contract Token is ERC20, Ownable, ERC2771Context {
     bool disabledMint; // for more trust of users
 
     constructor(
-        address _trustedForwarder,
+        address trustedForwarder_,
         address _beneficiant,
         string memory _name,
         string memory _symbol
     )
-        ERC2771Context(_trustedForwarder) ERC20(_name, _symbol)
+        ERC2771Context(trustedForwarder_) ERC20(_name, _symbol)
     {
         beneficiant = _beneficiant;
     }
@@ -62,10 +62,10 @@ contract Token is ERC20, Ownable, ERC2771Context {
     }
 
     function _msgSender() internal view virtual override(Context, ERC2771Context) returns (address) {
-        return msg.sender;
+        return ERC2771Context._msgSender();
     }
 
     function _msgData() internal view virtual override(Context, ERC2771Context) returns (bytes calldata) {
-        return msg.data;
+        return ERC2771Context._msgData();
     }
 }

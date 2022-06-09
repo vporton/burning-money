@@ -11,7 +11,8 @@
     "@opengsn/gsn": "^2.1.0",
     "@openzeppelin/contracts": "^4.6.0",
     "abdk-libraries-solidity": "^3.0.0",
-    "hardhat": "^2.9.7"
+    "hardhat": "^2.9.7",
+    "hardhat-deploy": "^0.11.10"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
