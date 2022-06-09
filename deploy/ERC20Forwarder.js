@@ -34,7 +34,7 @@ module.exports = async ({getNamedAccounts, deployments}) => {
         "contracts/6/token/erc20/IERC20.sol:IERC20",
         addresses.collateral
       );
-    await proxy.setTransferHandlerGas(addresses.collateral, 41672); // USDT
+    await proxy.setTransferHandlerGas(addresses.collateral, 41672); // USDT // FIXME: wrapped USDT
     await Collateral.approve(erc20ForwarderProxy.address, ethers.utils.parseEther("1000"));
   };
   module.exports.tags = ['ERC20Forwarder'];
