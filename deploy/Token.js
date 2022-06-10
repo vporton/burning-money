@@ -5,10 +5,12 @@ module.exports = async ({getNamedAccounts, deployments}) => {
     const {deployer} = await getNamedAccounts();
     const networkName = hre.network.name;
     const addresses = fs.readFileSync('addresses.json')[networkName];
+    const forwarder = await deployments.get("BiconomyForwarder");
     await deploy('Token', {
         from: deployer,
-        args: [addresses.TrustedForwarder, addresses.beneficiant, "World Token", "WT"],
+        args: [forwarder, addresses.beneficiant, "World Token", "WT"],
         log: true,
     });
   };
   module.exports.tags = ['Token'];
+  module.exports.dependencies = ['TrustedForwarder'];

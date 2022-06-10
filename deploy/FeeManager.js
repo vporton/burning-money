@@ -7,7 +7,7 @@ module.exports = async ({getNamedAccounts, deployments}) => {
     const FeeManager = await ethers.getContractFactory("CentralisedFeeManager");
     feeManager = await FeeManager.deploy(addresses.collateral, 0);
     await feeManager.deployed();
-    await feeManager.setTokenAllowed(USDT.address, true);
+    await feeManager.setTokenAllowed(addresses.collateral, true);
 
-});
+};
 module.exports.tags = ['FeeManager'];
