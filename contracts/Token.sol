@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ERC2771Context } from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
-import { Context } from "@openzeppelin/contracts/utils/Context.sol";
+import { ERC20 } from "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import { Ownable } from "openzeppelin-solidity/contracts/access/Ownable.sol";
+import { ERC2771Context } from "openzeppelin-solidity/contracts/metatx/ERC2771Context.sol";
+import { Context } from "openzeppelin-solidity/contracts/utils/Context.sol";
 import { ABDKMath64x64 } from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
 contract Token is ERC20, ERC2771Context, Ownable {
