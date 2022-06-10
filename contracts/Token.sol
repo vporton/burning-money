@@ -14,7 +14,6 @@ contract Token is ERC20, ERC2771Context, Ownable {
     mapping (address => address) public referrals;
     mapping (IERC20 => int128) public collaterals; // token => growth rate
     address beneficiant;
-    bool disabledMint; // for more trust of users
 
     constructor(
         address trustedForwarder_,
@@ -35,21 +34,12 @@ contract Token is ERC20, ERC2771Context, Ownable {
         beneficiant = _beneficiant;
     }
 
-    function disableMint() public onlyOwner {
-        disabledMint = true;
-    }
-
     function setReferral(address _user, address _referral) public {
         require(referrals[_user] == address(0));
         referrals[_user] = _referral;
     }
 
-    function mint(address account, uint256 amount) public onlyOwner {
-        require(!disabledMint);
-        _mint(account, amount);
-    }
-
-    function _mint(address account, uint256 amount) {
+    function _mint(address account, uint256 amount) internal override {
         ERC20._mint(account, amount);
         address _referral = referrals[account];
         if (_referral != address(0)) {
