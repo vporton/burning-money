@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-module.exports = async ({getNamedAccounts, deployments}) => {
+module.exports = async ({getNamedAccounts, getUnnamedAccounts, deployments}) => {
     const {deploy} = deployments;
     const {deployer} = await getNamedAccounts();
     const networkName = hre.network.name;
@@ -8,15 +8,15 @@ module.exports = async ({getNamedAccounts, deployments}) => {
 
     const ERC20Forwarder = await ethers.getContractFactory("ERC20Forwarder");
     erc20Forwarder = await ERC20Forwarder.deploy(
-        await accounts[0].getAddress()
+        await deployer.getAddress()
     );
     await erc20Forwarder.deployed();
     
     const ERC20ForwarderProxy = await hre.ethers.getContractFactory("ERC20ForwarderProxy");
     erc20ForwarderProxy = await ERC20ForwarderProxy.deploy(
         erc20Forwarder.address,
-        await accounts[0].getAddress(), // admin
-        await accounts[0].getAddress(), // owner
+        deployer, // admin
+        deployer, // owner
     );
     await erc20ForwarderProxy.deployed();
   
@@ -26,7 +26,7 @@ module.exports = async ({getNamedAccounts, deployments}) => {
         erc20ForwarderProxy.address
     );
     await proxy.initialize(
-        await accounts[0].getAddress(),
+        deployer,
         feeManager.address,
         forwarder.address
     );
