@@ -1,13 +1,17 @@
 const fs = require('fs');
+const { myDeploy } = require('../lib/default-deployer');
 
 module.exports = async ({getNamedAccounts, deployments, network}) => {
     const {deploy} = deployments;
     const {deployer} = await getNamedAccounts();
     const addresses = JSON.parse(fs.readFileSync('addresses.json'))[network.name];
     const FeeManager = await ethers.getContractFactory("CentralisedFeeManager");
-    feeManager = await FeeManager.deploy(addresses.collateral, 0);
-    await feeManager.deployed();
-    await feeManager.setTokenAllowed(addresses.collateral, true);
-
+    const feeManager = await myDeploy(
+        FeeManager, network, deployer, "CentralisedFeeManager",
+        [
+            deployer,
+            0,
+        ],
+    );
 };
 module.exports.tags = ['FeeManager'];

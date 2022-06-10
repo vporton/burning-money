@@ -1,11 +1,14 @@
+const { myDeploy } = require('../lib/default-deployer');
+
 module.exports = async ({getNamedAccounts, getUnnamedAccounts, deployments}) => {
     const {deploy} = deployments;
     const {deployer} = await getNamedAccounts();
 
     const Forwarder = await ethers.getContractFactory("BiconomyForwarder");
-    const forwarder = await Forwarder.deploy(deployer);
-    await forwarder.deployed();
-    console.log("BiconomyForwarder deployed");
+    const forwarder = await myDeploy(
+      Forwarder, network, deployer, "BiconomyForwarder",
+      [deployer],
+    );
 
     const salt = ethers.BigNumber.from(31337);
     const domainData = {

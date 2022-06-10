@@ -1,4 +1,7 @@
+const { getAddress } = require('ethers/lib/utils');
 const fs = require('fs');
+const { ethers } = require('hardhat');
+const { myDeploy } = require('../lib/default-deployer');
 
 module.exports = async ({getNamedAccounts, deployments, network}) => {
     const {deploy} = deployments;
@@ -6,11 +9,14 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
     const networkName = hre.network.name;
     const addresses = JSON.parse(fs.readFileSync('addresses.json'))[network.name];
     const forwarder = await deployments.get("BiconomyForwarder");
-    await deploy('Token', {
-        from: deployer,
-        args: [forwarder, addresses.beneficiant, "World Token", "WT"],
-        log: true,
-    });
-  };
-  module.exports.tags = ['Token'];
-  module.exports.dependencies = ['TrustedForwarder'];
+    const Token = await ethers.getContractFactory("Token");
+    const token = await myDeploy(
+        Token, network, deployer, "CentralisedFeeManager",
+        [forwarder.address, addresses.beneficiant, "World Token", "WT"],
+    );
+
+    const feeManager = await ethers.getContractAt("CentralisedFeeManager", getAddress(network.name, "CentralisedFeeManager"))
+    await feeManager.setTokenAllowed(token.address, true);
+};
+module.exports.tags = ['Token'];
+module.exports.dependencies = ['TrustedForwarder', 'FeeManager'];

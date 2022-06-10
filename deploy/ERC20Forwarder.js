@@ -1,4 +1,6 @@
+const { getAddress } = require('ethers/lib/utils');
 const fs = require('fs');
+const { myDeploy } = require('../lib/default-deployer');
 
 module.exports = async ({getNamedAccounts, deployments, network}) => {
     const {deploy} = deployments;
@@ -7,19 +9,20 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
     const addresses = JSON.parse(fs.readFileSync('addresses.json'))[network.name];
 
     const ERC20Forwarder = await ethers.getContractFactory("ERC20Forwarder");
-    erc20Forwarder = await ERC20Forwarder.deploy(deployer);
-    await erc20Forwarder.deployed();
+    const erc20Forwarder = await myDeploy(ERC20Forwarder, network, deployer, "ERC20Forwarder", deployer);
     
     const ERC20ForwarderProxy = await hre.ethers.getContractFactory("ERC20ForwarderProxy");
-    erc20ForwarderProxy = await ERC20ForwarderProxy.deploy(
-        erc20Forwarder.address,
-        deployer, // admin
-        deployer, // owner
+    const erc20ForwarderProxy = await myDeploy(
+        ERC20ForwarderProxy, network, deployer, "ERC20ForwarderProxy",
+        [
+            erc20Forwarder.address,
+            deployer, // admin
+            deployer, // owner
+        ],
     );
-    await erc20ForwarderProxy.deployed();
   
-    const forwarder = await deployments.getArtifact("BiconomyForwarder");
-    const feeManager = await deployments.getArtifact("CentralisedFeeManager");
+    const forwarder = getAddress(network.name, "BiconomyForwarder");
+    const feeManager = getAddress(network.name, "CentralisedFeeManager");
     proxy = await ethers.getContractAt(
         "ERC20Forwarder",
         erc20ForwarderProxy.address
@@ -30,7 +33,7 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
         forwarder.address
     );
 
-    const token = await deployments.getArtifact("Token");
+    const token = getAddress(network.name, "Token");
     await proxy.setTransferHandlerGas(token.address, 41672); // FIXME
     await token.approve(erc20ForwarderProxy.address, ethers.utils.parseEther("1000"));
   };
