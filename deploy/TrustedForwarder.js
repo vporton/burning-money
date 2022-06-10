@@ -5,7 +5,9 @@ module.exports = async ({getNamedAccounts, getUnnamedAccounts, deployments}) => 
     const Forwarder = await ethers.getContractFactory("BiconomyForwarder");
     const forwarder = await Forwarder.deploy(deployer);
     await forwarder.deployed();
+    console.log("BiconomyForwarder deployed");
 
+    const salt = ethers.BigNumber.from(31337);
     const domainData = {
         name: "World Token",
         version: "1",

@@ -1,10 +1,10 @@
 const fs = require('fs');
 
-module.exports = async ({getNamedAccounts, deployments}) => {
+module.exports = async ({getNamedAccounts, deployments, network}) => {
     const {deploy} = deployments;
     const {deployer} = await getNamedAccounts();
     const networkName = hre.network.name;
-    const addresses = JSON.parse(fs.readFileSync('addresses.json'))[networkName];
+    const addresses = JSON.parse(fs.readFileSync('addresses.json'))[network.name];
     const forwarder = await deployments.get("BiconomyForwarder");
     await deploy('Token', {
         from: deployer,

@@ -1,15 +1,13 @@
 const fs = require('fs');
 
-module.exports = async ({getNamedAccounts, getUnnamedAccounts, deployments}) => {
+module.exports = async ({getNamedAccounts, deployments, network}) => {
     const {deploy} = deployments;
     const {deployer} = await getNamedAccounts();
     const networkName = hre.network.name;
-    const addresses = JSON.parse(fs.readFileSync('addresses.json'))[networkName];
+    const addresses = JSON.parse(fs.readFileSync('addresses.json'))[network.name];
 
     const ERC20Forwarder = await ethers.getContractFactory("ERC20Forwarder");
-    erc20Forwarder = await ERC20Forwarder.deploy(
-        await deployer.getAddress()
-    );
+    erc20Forwarder = await ERC20Forwarder.deploy(deployer);
     await erc20Forwarder.deployed();
     
     const ERC20ForwarderProxy = await hre.ethers.getContractFactory("ERC20ForwarderProxy");
@@ -20,9 +18,10 @@ module.exports = async ({getNamedAccounts, getUnnamedAccounts, deployments}) => 
     );
     await erc20ForwarderProxy.deployed();
   
-    const forwarder = await deployments.get("BiconomyForwarder");
+    const forwarder = await deployments.getArtifact("BiconomyForwarder");
+    const feeManager = await deployments.getArtifact("CentralisedFeeManager");
     proxy = await ethers.getContractAt(
-        "contracts/6/forwarder/ERC20Forwarder.sol:ERC20Forwarder",
+        "ERC20Forwarder",
         erc20ForwarderProxy.address
     );
     await proxy.initialize(
@@ -39,4 +38,4 @@ module.exports = async ({getNamedAccounts, getUnnamedAccounts, deployments}) => 
     await Collateral.approve(erc20ForwarderProxy.address, ethers.utils.parseEther("1000"));
   };
   module.exports.tags = ['ERC20Forwarder'];
-  module.exports.dependencies = ['TrustedForwarder'];
+  module.exports.dependencies = ['TrustedForwarder', 'FeeManager'];
