@@ -22,6 +22,9 @@ module.exports = {
     deployer: {
       default: 0, // here this will by default take the first account as deployer
     },
+    admin: {
+      default: 1,
+    },
   },
   networks: {
     hardhat: {
