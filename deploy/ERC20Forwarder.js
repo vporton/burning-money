@@ -30,12 +30,9 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
         forwarder.address
     );
 
-    Collateral = await ethers.getContractAt(
-        "contracts/6/token/erc20/IERC20.sol:IERC20",
-        addresses.collateral
-      );
-    await proxy.setTransferHandlerGas(addresses.collateral, 41672); // USDT // FIXME: wrapped USDT
-    await Collateral.approve(erc20ForwarderProxy.address, ethers.utils.parseEther("1000"));
+    const token = await deployments.getArtifact("Token");
+    await proxy.setTransferHandlerGas(token.address, 41672); // FIXME
+    await token.approve(erc20ForwarderProxy.address, ethers.utils.parseEther("1000"));
   };
   module.exports.tags = ['ERC20Forwarder'];
-  module.exports.dependencies = ['TrustedForwarder', 'FeeManager'];
+  module.exports.dependencies = ['TrustedForwarder', 'FeeManager', 'Token'];
