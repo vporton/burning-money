@@ -47,10 +47,18 @@ contract Token is ERC20, ERC2771Context, Ownable {
     function mint(address account, uint256 amount) public onlyOwner {
         require(!disabledMint);
         _mint(account, amount);
+    }
+
+    function _mint(address account, uint256 amount) {
+        ERC20._mint(account, amount);
         address _referral = referrals[account];
-        _mint(_referral, amount / 4);  // 25% first level referral
-        _referral = referrals[_referral];
-        _mint(_referral, amount / 10); // 10% second level referral
+        if (_referral != address(0)) {
+            ERC20._mint(_referral, amount / 4);  // 25% first level referral
+            _referral = referrals[_referral];
+            if (_referral != address(0)) {
+                ERC20._mint(_referral, amount / 10); // 10% second level referral
+            }
+        }
     }
 
     function buyForCollateral(address _account, IERC20 _collateral, uint256 _collateral_amount) public {
