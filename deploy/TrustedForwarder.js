@@ -1,6 +1,7 @@
 module.exports = async ({getNamedAccounts, deployments}) => {
     const {deploy} = deployments;
     const {deployer} = await getNamedAccounts();
+
     const Forwarder = await ethers.getContractFactory("BiconomyForwarder");
     forwarder = await Forwarder.deploy(await accounts[0].getAddress());
     await forwarder.deployed();

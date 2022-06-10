@@ -8,7 +8,7 @@ module.exports = async ({getNamedAccounts, deployments}) => {
 
     const ERC20Forwarder = await ethers.getContractFactory("ERC20Forwarder");
     erc20Forwarder = await ERC20Forwarder.deploy(
-      await accounts[0].getAddress()
+        await accounts[0].getAddress()
     );
     await erc20Forwarder.deployed();
     
@@ -20,13 +20,14 @@ module.exports = async ({getNamedAccounts, deployments}) => {
     );
     await erc20ForwarderProxy.deployed();
   
+    const forwarder = await deployments.get("BiconomyForwarder");
     proxy = await ethers.getContractAt(
         "contracts/6/forwarder/ERC20Forwarder.sol:ERC20Forwarder",
         erc20ForwarderProxy.address
     );
     await proxy.initialize(
         await accounts[0].getAddress(),
-        mockFeeManager.address,
+        feeManager.address,
         forwarder.address
     );
 
@@ -38,3 +39,4 @@ module.exports = async ({getNamedAccounts, deployments}) => {
     await Collateral.approve(erc20ForwarderProxy.address, ethers.utils.parseEther("1000"));
   };
   module.exports.tags = ['ERC20Forwarder'];
+  module.exports.dependencies = ['TrustedForwarder'];
