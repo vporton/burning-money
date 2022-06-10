@@ -4,7 +4,7 @@ module.exports = async ({getNamedAccounts, deployments}) => {
     const {deploy} = deployments;
     const {deployer} = await getNamedAccounts();
     const networkName = hre.network.name;
-    const addresses = fs.readFileSync('addresses.json')[networkName];
+    const addresses = JSON.parse(fs.readFileSync('addresses.json'))[networkName];
 
     const ERC20Forwarder = await ethers.getContractFactory("ERC20Forwarder");
     erc20Forwarder = await ERC20Forwarder.deploy(
