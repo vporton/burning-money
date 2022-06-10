@@ -35,6 +35,7 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
     const tokenAddress = getAddress(network.name, "Token");
     const token = await ethers.getContractAt("Token", tokenAddress);
     await proxy.setTransferHandlerGas(tokenAddress, 41672); // FIXME
+    await proxy.setSafeTransferRequired(tokenAddress, true); // FIXME?
     await token.approve(erc20ForwarderProxy.address, ethers.utils.parseEther("1000"));
   };
   module.exports.tags = ['ERC20Forwarder'];
