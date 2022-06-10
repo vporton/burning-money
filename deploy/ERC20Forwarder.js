@@ -1,6 +1,5 @@
-const { getAddress } = require('ethers/lib/utils');
 const fs = require('fs');
-const { myDeploy } = require('../lib/default-deployer');
+const { myDeploy, getAddress } = require('../lib/default-deployer');
 
 module.exports = async ({getNamedAccounts, deployments, network}) => {
     const {deploy} = deployments;
@@ -9,7 +8,7 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
     const addresses = JSON.parse(fs.readFileSync('addresses.json'))[network.name];
 
     const ERC20Forwarder = await ethers.getContractFactory("ERC20Forwarder");
-    const erc20Forwarder = await myDeploy(ERC20Forwarder, network, deployer, "ERC20Forwarder", deployer);
+    const erc20Forwarder = await myDeploy(ERC20Forwarder, network, deployer, "ERC20Forwarder", [deployer]);
     
     const ERC20ForwarderProxy = await hre.ethers.getContractFactory("ERC20ForwarderProxy");
     const erc20ForwarderProxy = await myDeploy(
@@ -29,12 +28,12 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
     );
     await proxy.initialize(
         deployer,
-        feeManager.address,
-        forwarder.address
+        feeManager,
+        forwarder,
     );
 
     const token = getAddress(network.name, "Token");
-    await proxy.setTransferHandlerGas(token.address, 41672); // FIXME
+    await proxy.setTransferHandlerGas(token, 41672); // FIXME
     await token.approve(erc20ForwarderProxy.address, ethers.utils.parseEther("1000"));
   };
   module.exports.tags = ['ERC20Forwarder'];

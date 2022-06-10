@@ -11,3 +11,5 @@ yarn-error.log
 #Hardhat files
 cache
 artifacts
+
+deployed-addresses.json
