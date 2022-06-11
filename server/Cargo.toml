@@ -1,0 +1,21 @@
+[package]
+name = "rtoken-server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = "4.0.1"
+diesel = { version = "1.4.8", features = ["postgres"] }
+askama = { version = "0.11.1", features = ["with-actix-web"] }
+askama_actix = "0.13.0"
+env_logger = "0.9.0"
+serde = "1.0.137"
+serde_derive = "1.0.137"
+r2d2 = "0.8.9"
+r2d2-diesel = "1.0.0"
+clap = { version = "3.1.8", features = ["derive"] }
+lambda-web = { version = "0.1.9", features=["actix4"] }
+toml = "0.5.9"
+actix-files = "0.6.0"

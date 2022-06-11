@@ -1,0 +1,18 @@
+{
+  "name": "rserver-frontend",
+  "version": "0.0.1",
+  "description": "Frontend for Referral Tokens server",
+  "main": "index.js",
+  "author": "Victor Porton",
+  "license": "commercial",
+  "dependencies": {
+    "@ramp-network/ramp-instant-sdk": "^3.1.1",
+    "browserify": "^17.0.0",
+    "parcel": "^2.6.0",
+    "ts-node": "^10.8.1",
+    "typescript": "^4.7.3"
+  },
+  "scripts": {
+    "dev": "npx parcel index.html"
+  }
+}

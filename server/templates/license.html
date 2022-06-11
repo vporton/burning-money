@@ -1,0 +1,19 @@
+{% extends "_base.html" %}
+{% block title %}Freeverr License{% endblock %}
+
+{% block head %}
+<link rel="canonical" href="{{ url_prefix }}/license"/>
+{% endblock %}
+
+{% block content %}
+Despite the file GPL-3 is distributed with this software, it is NOT licensed under GPL.
+
+Instead, it is licensed under <a href="https://www.gnu.org/licenses/gpl-3.0.en.html">GPL</a>
+with the following additional clause:
+
+<ul>
+    <li>The SEO link to the "main" installation of this software must not be removed, hidden,
+        or altered. (Particularly, changing it to <code>rel="nofollow"</code> and similar things are not
+        permitted.) This clause is applicable to any derivative work.</li>
+</ul>
+{% endblock %}

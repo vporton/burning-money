@@ -7,6 +7,8 @@ coverage
 coverage.json
 typechain
 yarn-error.log
+.parcel-cache
+dist
 
 #Hardhat files
 cache
