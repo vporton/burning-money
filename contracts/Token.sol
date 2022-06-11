@@ -32,13 +32,19 @@ interface ChainlinkInterface {
 contract Token is ERC20, ERC2771Context, Ownable {
     using ABDKMath64x64 for int128;
 
+    // TODO: Events.
+
+    IERC20 public collateral;
+    int128 public growthRate;
     ChainlinkInterface internal registry;
-    address internal DotTokenId;
     mapping (address => address) public referrals;
-    mapping (IERC20 => int128) public collaterals; // token => growth rate
-    address beneficiant;
+    address public beneficiant;
+    mapping (uint => mapping(address => uint256)) public bids; // time => (address => bid)
+    mapping (uint => uint256) public totalBids; // address => total bid
 
     constructor(
+        IERC20 _collateral,
+        int128 _growthRate, // FIXME: Check overflow!
         ChainlinkInterface _registry, // 0x6f6371a780324b90aaf195a0d39c723c // DOT to USD // FIXME: Instead use GLMR
         address trustedForwarder_,
         address _beneficiant,
@@ -47,12 +53,10 @@ contract Token is ERC20, ERC2771Context, Ownable {
     )
         ERC2771Context(trustedForwarder_) ERC20(_name, _symbol)
     {
+        collateral = _collateral;
+        growthRate = _growthRate;
         registry = _registry;
         beneficiant = _beneficiant;
-    }
-
-    function setCollateral(IERC20 _collateral, int128 _growthRate) public onlyOwner {
-        collaterals[_collateral] = _growthRate;
     }
 
     function changeBeneficiant(address _beneficiant) public onlyOwner {
@@ -80,13 +84,25 @@ contract Token is ERC20, ERC2771Context, Ownable {
         }
     }
 
-    function buyForCollateral(address _account, IERC20 _collateral, uint256 _collateral_amount) public {
-        int128 _growthRate = collaterals[_collateral];
-        require(_growthRate != 0, "Collateral not supported");
-        int128 _ourTokenAmount = _growthRate.mul(int128(uint128(block.timestamp))).exp_2();
+     /// `time` must be a multiple of 24*3600, otherwise the bid is ignored.
+    /// Need to approve this contract for transfers of collateral before calling this function.
+    function bidOn(uint _time, uint256 _collateralAmount) public {
+        require(block.timestamp < _time);
+        totalBids[_time] += _collateralAmount; // Solidity 0.8 overflow protection
+        bids[_time][_msgSender()] += _collateralAmount;
+        collateral.transferFrom(_msgSender(), beneficiant, _collateralAmount);
+    }
+
+    function withdraw(uint _time, address _account) public {
+        require(block.timestamp >= _time);
+        require(_time % (24*3600) == 0);
+
+        // TODO: Check calculations.
+        int128 _ourTokenAmount = growthRate.mul(int128(uint128(block.timestamp))).exp_2();
         int128 _price = _ourTokenAmount.mul(10000_0000).div(int128(uint128(getCollateralPrice() * (1<<128))));
-        _mint(_account, _collateral_amount * uint256(int256(_price)));
-        _collateral.transfer(beneficiant, _collateral_amount);
+        int128 _share = ABDKMath64x64.divu(bids[_time][_msgSender()], totalBids[_time]);
+        _mint(_account, uint256(int256(_ourTokenAmount.mul(_price.mul(_share)))));
+        collateral.transfer(beneficiant, totalBids[_time]);
     }
 
     function _msgSender() internal view virtual override(Context, ERC2771Context) returns (address) {
