@@ -1,9 +1,11 @@
 use actix_web::{Responder, get, HttpResponse, web};
 use askama::Template;
-use clap::lazy_static::lazy_static;
 use diesel::{insert_into, RunQueryDsl};
 use ethsign::SecretKey;
+use magic_crypt::{MagicCryptTrait, new_magic_crypt};
+use serde_json::json;
 use crate::Config;
+use crate::crypto::{random_bytes, receive_super_secret};
 use crate::errors::MyError;
 
 #[get("/aboutus")]
@@ -34,14 +36,18 @@ struct CreateAccountQuery {
     user_account: String,
 }
 
+// TODO: Rewrite `@ramp-network/ramp-instant-sdk` to run this only right before payment.
 #[get("/create-tmp-account")]
-pub async fn create_account(q: web::Query<CreateAccountQuery>, config: web::Path<[u8; 32]>) -> Result<impl Responder, MyError> {
+pub async fn create_account(q: web::Query<CreateAccountQuery>, config: web::Path<Config>) -> Result<impl Responder, MyError> {
     let secret = SecretKey::from_raw(&random_bytes())?;
     let super_secret = receive_super_secret(&*config);
     let mcrypt = new_magic_crypt!(super_secret, 256);
-    let ciphered_secret = mcrypt.encrypt_to_bytes(secret);
+    let ciphered_secret = mcrypt.encrypt_to_bytes(&secret);
+    let conn = config.pool.get()?;
+    use crate::schema::payments::dsl::*;
+    // FIXME: Make `user_account` a UNIQUE field.
     insert_into(payments)
-        .values(user_account.eq(q.user_account), temp_account_priv_key.eq(ciphered_secret))
-        .execute(??)?;
-    Ok(HttpResponse::Ok().body(json!{}))
+        .values((user_account.eq(&q.user_account), temp_account_priv_key.eq(&ciphered_secret)))
+        .execute(&*conn)?;
+    Ok(HttpResponse::Ok().body(json!({}))) // FIXME: Content-Type
 }

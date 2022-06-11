@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, write};
 use std::io;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
@@ -11,6 +11,7 @@ pub enum MyError {
     IO(io::Error),
     DatabaseConnection(r2d2::Error),
     Database(diesel::result::Error),
+    Secp256k1(secp256k1::Error),
 }
 
 impl MyError {
@@ -39,6 +40,7 @@ impl Display for MyError {
             Self::IO(err) => write!(f, "I/O error: {err}"),
             Self::DatabaseConnection(err) => write!(f, "Cannot connect to DB: {err}"),
             Self::Database(err) => write!(f, "DB error: {err}"),
+            Self::Secp256k1(err) => write!(f, "(De)ciphering error: {err}"),
         }
     }
 }
@@ -77,5 +79,11 @@ impl From<r2d2::Error> for MyError {
 impl From<diesel::result::Error> for MyError {
     fn from(value: diesel::result::Error) -> Self {
         Self::Database(value)
+    }
+}
+
+impl From<secp256k1::Error> for MyError {
+    fn from(value: secp256k1::Error) -> Self {
+        Self::Secp256k1(value)
     }
 }

@@ -12,12 +12,15 @@ use crate::pages::{about_us, not_found};
 mod our_db_pool;
 mod pages;
 mod errors;
+mod crypto;
+mod schema;
 
 #[derive(Clone, Deserialize)]
 pub struct Config {
     host: String,
     port: u16,
     url_prefix: String,
+    super_secret_file: String,
     database: DBConfig,
 }
 
