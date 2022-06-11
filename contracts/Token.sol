@@ -42,6 +42,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
     mapping (uint => mapping(address => uint256)) public bids; // time => (address => bid)
     mapping (uint => uint256) public totalBids; // address => total bid
 
+    // TODO: premint
     constructor(
         IERC20 _collateral,
         int128 _growthRate, // FIXME: Check overflow!
