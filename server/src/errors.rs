@@ -1,9 +1,10 @@
-use std::fmt::{Display, Formatter, write};
+use std::fmt::{Display, Formatter};
 use std::io;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use actix_web::http::header::ContentType;
 use askama::Template;
+use ethers_core::abi::AbiError;
 
 #[derive(Debug)]
 pub enum MyError {
@@ -12,6 +13,8 @@ pub enum MyError {
     DatabaseConnection(r2d2::Error),
     Database(diesel::result::Error),
     Secp256k1(secp256k1::Error),
+    EthSign(ethsign::Error),
+    Abi(AbiError),
 }
 
 impl MyError {
@@ -41,6 +44,8 @@ impl Display for MyError {
             Self::DatabaseConnection(err) => write!(f, "Cannot connect to DB: {err}"),
             Self::Database(err) => write!(f, "DB error: {err}"),
             Self::Secp256k1(err) => write!(f, "(De)ciphering error: {err}"),
+            Self::EthSign(err) => write!(f, "Ethereum signing error: {err}"),
+            Self::Abi(err) => write!(f, "Ethereum ABI error: {err}"),
         }
     }
 }
@@ -85,5 +90,17 @@ impl From<diesel::result::Error> for MyError {
 impl From<secp256k1::Error> for MyError {
     fn from(value: secp256k1::Error) -> Self {
         Self::Secp256k1(value)
+    }
+}
+
+impl From<ethsign::Error> for MyError {
+    fn from(value: ethsign::Error) -> Self {
+        Self::EthSign(value)
+    }
+}
+
+impl From<AbiError> for MyError {
+    fn from(value: AbiError) -> Self {
+        Self::Abi(value)
     }
 }
