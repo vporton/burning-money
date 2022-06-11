@@ -1,4 +1,5 @@
 use actix_web::{Responder, get, HttpResponse, web};
+use actix_web::http::header::CONTENT_TYPE;
 use askama::Template;
 use diesel::{ExpressionMethods, insert_into, RunQueryDsl};
 use ethsign::keyfile::Crypto;
@@ -58,5 +59,7 @@ pub async fn create_account(q: web::Query<CreateAccountQuery>, common: web::Data
         .values((user_account.eq(&v_user_account as &[u8]), temp_account_priv_key.eq(ciphered_secret.ciphertext.0)))
         // .values((user_account.eq(<&[u8]>::from(&v_user_account)), temp_account_priv_key.eq(ciphered_secret.into())))
         .execute(&*conn)?;
-    Ok(HttpResponse::Ok().body(serde_json::to_vec(&json!({})).unwrap())) // FIXME: Content-Type
+    Ok(HttpResponse::Ok()
+        .append_header((CONTENT_TYPE, "application/json"))
+        .body(serde_json::to_vec(&json!({})).unwrap()))
 }
