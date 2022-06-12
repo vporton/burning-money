@@ -36,7 +36,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
 
     IERC20 public collateral;
     int128 public growthRate;
-    ChainlinkInterface internal registry;
+    ChainlinkInterface internal collateralOracle;
     mapping (address => address) public referrals;
     address public beneficiant;
     mapping (uint => mapping(address => uint256)) public bids; // time => (address => bid)
@@ -46,7 +46,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
     constructor(
         IERC20 _collateral,
         int128 _growthRate, // FIXME: Check overflow!
-        ChainlinkInterface _registry, // 0x6f6371a780324b90aaf195a0d39c723c // DOT to USD // FIXME: Instead use GLMR
+        ChainlinkInterface _collateralOracle, // 0x6f6371a780324b90aaf195a0d39c723c // DOT to USD // https://docs.moonbeam.network/builders/integrations/oracles/chainlink/
         address trustedForwarder_,
         address _beneficiant,
         string memory _name,
@@ -56,7 +56,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
     {
         collateral = _collateral;
         growthRate = _growthRate;
-        registry = _registry;
+        collateralOracle = _collateralOracle;
         beneficiant = _beneficiant;
     }
 
@@ -70,7 +70,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
     }
 
     function getCollateralPrice() internal view returns (uint256) {
-        return registry.currentPrice();
+        return collateralOracle.currentPrice();
     }
 
     function _mint(address account, uint256 amount) internal override {
