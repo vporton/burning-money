@@ -45,7 +45,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
     // TODO: premint
     constructor(
         IERC20 _collateral,
-        int128 _growthRate, // FIXME: Check overflow!
+        int128 _growthRate,
         ChainlinkInterface _collateralOracle, // 0x6f6371a780324b90aaf195a0d39c723c // DOT to USD // https://docs.moonbeam.network/builders/integrations/oracles/chainlink/
         address trustedForwarder_,
         address _beneficiant,
@@ -94,6 +94,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
         collateral.transferFrom(_msgSender(), beneficiant, _collateralAmount);
     }
 
+    // Some time in the future overflow will happen.
     function withdraw(uint _time, address _account) public {
         require(block.timestamp >= _time);
         require(_time % (24*3600) == 0);
