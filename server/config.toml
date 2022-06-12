@@ -1,0 +1,7 @@
+host = "localhost"
+port = 8080
+url_prefix = "http://localhost"
+super_secret_file = "supersecret.priv"
+
+[database]
+url = "postgres://rserver:123@localhost/rserver"
