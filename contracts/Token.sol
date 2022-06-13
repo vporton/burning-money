@@ -101,7 +101,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
 
         // TODO: Check calculations.
         int128 _ourTokenAmount = growthRate.mul(int128(uint128(block.timestamp))).exp_2();
-        int128 _price = _ourTokenAmount.mul(10000_0000).div(int128(uint128(getCollateralPrice() * (1<<128))));
+        int128 _price = _ourTokenAmount.mul(10000_0000).div(int128(uint128(getCollateralPrice() * (1<<64))));
         int128 _share = ABDKMath64x64.divu(bids[_time][_msgSender()], totalBids[_time]);
         _mint(_account, uint256(int256(_ourTokenAmount.mul(_price.mul(_share)))));
         collateral.transfer(beneficiant, totalBids[_time]);
