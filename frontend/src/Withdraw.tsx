@@ -13,6 +13,7 @@ export default function Withdraw() {
     // maxDate.setDate(maxDate.getDate() - 1);
     const [date, setDate] = useState(maxDate);
     const [amount, setAmount] = useState<number | null>(null);
+    const [withdrawn, setWithdrawn] = useState(false);
 
     useEffect(() => {
         // TODO: Duplicate code
@@ -29,6 +30,8 @@ export default function Withdraw() {
                     setAmount(amount);
                 });
             }
+            const withdrawn = await token.connect(provider.getSigner(0)).callStatic.totalBids(day);
+            setWithdrawn(!withdrawn.eq(BN.from(0)));
         });
     }, [date]);
 
@@ -49,7 +52,9 @@ export default function Withdraw() {
     return (
         <>
             <p>Withdraw for bid date: <Calendar maxDate={maxDate} onChange={setDate}/></p>
-            <p><button onClick={withdraw}>Withdraw</button> <span>{amount === null ? '' : utils.formatEther(amount)}</span> WT</p>
+            <p><button onClick={withdraw}>Withdraw</button> <span>{amount === null ? '' : utils.formatEther(amount)}</span> WT{" "}
+                {withdrawn ? "already withdrawn" : "not withdrawn"}
+            </p>
         </>
     );
 }

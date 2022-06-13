@@ -17,8 +17,9 @@ contract Token is ERC20, ERC2771Context, Ownable {
     int128 public growthRate;
     mapping (address => address) public referrals;
     address public beneficiant;
-    mapping (uint => mapping(address => uint256)) public bids; // time => (address => bid) // FIXME: Check that bids(a,b) works.
+    mapping (uint => mapping(address => uint256)) public bids; // time => (address => bid)
     mapping (uint => uint256) public totalBids; // address => total bid
+    mapping (uint => mapping(address => bool)) public withdrawn; // time => (address => withdrawn)
 
     // TODO: premint
     constructor(
@@ -76,6 +77,8 @@ contract Token is ERC20, ERC2771Context, Ownable {
     // Some time in the future overflow will happen.
     function withdraw(uint _day, address _account) public {
         require(block.timestamp >= _day * (24*3600), "Too early to withdraw");
+        require(!withdrawn[_day][_account], "already withdrawn");
+        withdrawn[_day][_account] = true;
         _mint(_account, withdrawalAmount(_day));
     }
 
