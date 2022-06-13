@@ -7,6 +7,7 @@
   "license": "commercial",
   "dependencies": {
     "@ramp-network/ramp-instant-sdk": "^3.1.1",
+    "assert": "^2.0.0",
     "browserify": "^17.0.0",
     "parcel": "^2.6.0",
     "react": "^18.1.0",
