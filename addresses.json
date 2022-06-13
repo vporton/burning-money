@@ -2,6 +2,9 @@
     "hardhat": {
         "beneficiant": "0x204B2F1F86D79dCC527276e259009e30de5C7107"
     },
+    "local": {
+        "beneficiant": "0x204B2F1F86D79dCC527276e259009e30de5C7107"
+    },
     "moonbeam": {
         "_comment1": "collateral: xcDOT",
         "collateral": "0xFfFFfFff1FcaCBd218EDc0EbA20Fc2308C778080",

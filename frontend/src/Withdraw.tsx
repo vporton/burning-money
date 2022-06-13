@@ -6,13 +6,13 @@ import deployed from "../../dist/deployed-addresses.json";
 import { CHAINS } from './data';
 import { abi as tokenAbi } from "../../artifacts/contracts/Token.sol/Token.json";
 import { useEffect, useState } from 'react';
-const { utils } = ethers;
+const { utils, BigNumber: BN } = ethers;
 
 export default function Withdraw() {
     const maxDate = new Date();
-    maxDate.setDate(maxDate.getDate() - 1);
+    // maxDate.setDate(maxDate.getDate() - 1);
     const [date, setDate] = useState(maxDate);
-    const [amount, setAmount] = useState(null);
+    const [amount, setAmount] = useState<number | null>(null);
 
     useEffect(() => {
         // TODO: Duplicate code
@@ -21,10 +21,14 @@ export default function Withdraw() {
             const { chainId } = await provider.getNetwork();
             const day = Math.floor(Number(date) / (24*3600));
             const token = new ethers.Contract(deployed[CHAINS[chainId]].Token, tokenAbi);
-            console.log(token)
-            // token.callStatic.withdrawalAmount(day).then(amount => {
-            //     setAmount(amount);
-            // });        
+            const totalBid = await token.connect(provider.getSigner(0)).callStatic.totalBids(day);
+            if(totalBid.eq(BN.from(0))) {
+                setAmount(0);
+            } else {
+                token.connect(provider.getSigner(0)).callStatic.withdrawalAmount(day).then(amount => {
+                    setAmount(amount);
+                });
+            }
         });
     }, [date]);
 
@@ -44,7 +48,7 @@ export default function Withdraw() {
     
     return (
         <>
-            <p>Withdraw for bid date: <Calendar minDate={maxDate} onChange={setDate}/></p>
+            <p>Withdraw for bid date: <Calendar maxDate={maxDate} onChange={setDate}/></p>
             <p><button onClick={withdraw}>Withdraw</button> <span>{amount === null ? '' : utils.formatEther(amount)}</span> WT</p>
         </>
     );

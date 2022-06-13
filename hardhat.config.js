@@ -37,7 +37,14 @@ module.exports = {
           privateKey: "34bc09a2210e5a1e2cf34cee3e1e7cc73cbe6ae3cdf2dec15b15dd1a814c9540", // 0xFbe0204Ffa36E3C621331d36FB566352e1EB1F7e
           balance: String(10**18),
         },
-      ]
+      ],
+    },
+    local: {
+      url: "http://localhost:8545",
+      accounts: [
+        "2366a48160bcc5f0cef8bbace95928130d3aabe972475cea2c1b978ebcad4212", // 0xe9243658aFAD5CEAd2e6ca3C0E44087EcA1D11A3
+        "34bc09a2210e5a1e2cf34cee3e1e7cc73cbe6ae3cdf2dec15b15dd1a814c9540", // 0xFbe0204Ffa36E3C621331d36FB566352e1EB1F7e
+      ],
     },
   },
   solidity: {
