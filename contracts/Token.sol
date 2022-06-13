@@ -17,7 +17,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
     int128 public growthRate;
     mapping (address => address) public referrals;
     address public beneficiant;
-    mapping (uint => mapping(address => uint256)) public bids; // time => (address => bid)
+    mapping (uint => mapping(address => uint256)) public bids; // time => (address => bid) // FIXME: Check that bids(a,b) works.
     mapping (uint => uint256) public totalBids; // address => total bid
 
     // TODO: premint
