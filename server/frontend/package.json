@@ -10,6 +10,7 @@
     "browserify": "^17.0.0",
     "parcel": "^2.6.0",
     "react": "^18.1.0",
+    "react-calendar": "^3.7.0",
     "react-dom": "^18.1.0",
     "react-router-dom": "^6.3.0",
     "ts-node": "^10.8.1",

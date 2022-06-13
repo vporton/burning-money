@@ -15,10 +15,11 @@ function MyNavLink(props) {
 
 export function App() {
     return <>
+        <h1>Bid world token</h1>
         <BrowserRouter>
             <nav className="mainNav">
-                <MyNavLink to={`/bid`}>Bid</MyNavLink> |{" "}
-                <MyNavLink to={`/card`}>Pay with a card</MyNavLink>
+                <MyNavLink to={`/bid`}>Bid DOT token</MyNavLink> |{" "}
+                <MyNavLink to={`/card`}>Bid with a card or bank</MyNavLink>
             </nav>
             <Routes>
                 <Route path="/bid" element={<Bid/>} />
