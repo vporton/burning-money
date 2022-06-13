@@ -1,11 +1,12 @@
-import { ethers } from 'hardhat';
+// import { ethers } from 'hardhat';
+import { ethers } from 'ethers';
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css';
 import deployed from "../../dist/deployed-addresses.json";
 import { CHAINS } from './data';
 import { abi as tokenAbi } from "../../artifacts/contracts/Token.sol/Token.json";
 import { useEffect, useState } from 'react';
-const { utils } = ethers;
+// const { utils } = ethers;
 
 export default function Bid() {
     const minDate = new Date();
@@ -18,11 +19,16 @@ export default function Bid() {
     }, [date, bidAmount])
 
     async function bid() {
-        let provider = new ethers.providers.JsonRpcProvider();
+        await (window as any).ethereum.enable();
+        const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
         const { chainId } = await provider.getNetwork();
-        const token = await ethers.getContractAt(tokenAbi, deployed[chainId].Token);
+        if(!CHAINS[chainId] || !deployed[CHAINS[chainId]]) {
+            alert("This chain is not supported"); // TODO
+            return;
+        }
+        const token = new ethers.Contract(deployed[CHAINS[chainId]].Token, tokenAbi);
         const day = Math.floor(Number(date) / (24*3600))
-        await token.bidOn(day, utils.parseEther(bidAmount));
+        await token.connect(provider.getSigner(0)).bidOn(day, ethers.utils.parseEther(bidAmount));
     }
     
     return (
