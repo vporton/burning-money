@@ -67,13 +67,16 @@ contract Token is ERC20, ERC2771Context, Ownable {
         collateral.transferFrom(_msgSender(), beneficiant, _collateralAmount);
     }
 
+    function withdrawalAmount(uint _day) public view returns(uint256) {
+        int128 _ourTokenAmount = growthRate.mul(int128(uint128(_day))).exp_2();
+        int128 _share = ABDKMath64x64.divu(bids[_day][_msgSender()], totalBids[_day]);
+        return uint256(int256(_ourTokenAmount.mul(_share)));
+    }
+
     // Some time in the future overflow will happen.
     function withdraw(uint _day, address _account) public {
         require(block.timestamp >= _day * (24*3600), "Too early to withdraw");
-
-        int128 _ourTokenAmount = growthRate.mul(int128(uint128(_day))).exp_2();
-        int128 _share = ABDKMath64x64.divu(bids[_day][_msgSender()], totalBids[_day]);
-        _mint(_account, uint256(int256(_ourTokenAmount.mul(_share))));
+        _mint(_account, withdrawalAmount(_day));
     }
 
     function _msgSender() internal view virtual override(Context, ERC2771Context) returns (address) {

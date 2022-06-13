@@ -1,6 +1,7 @@
 import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
 import Bid from './Bid';
 import Card from './Card';
+import Withdraw from './Withdraw';
 import "./App.css";
 
 function MyNavLink(props) {
@@ -19,11 +20,13 @@ export function App() {
         <BrowserRouter>
             <nav className="mainNav">
                 <MyNavLink to={`/bid`}>Bid DOT token</MyNavLink> |{" "}
-                <MyNavLink to={`/card`}>Bid with a card or bank</MyNavLink>
+                {/*<MyNavLink to={`/card`}>Bid with a card or bank</MyNavLink> |{" "}*/}
+                <MyNavLink to={`/withdraw`}>Withdraw earninigs</MyNavLink>
             </nav>
             <Routes>
                 <Route path="/bid" element={<Bid/>} />
                 <Route path="/card" element={<Card/>} />
+                <Route path="/withdraw" element={<Withdraw/>} />
             </Routes>
         </BrowserRouter>
     </>
