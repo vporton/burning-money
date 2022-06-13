@@ -57,7 +57,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
         }
     }
 
-     /// `time` must be a multiple of 24*3600, otherwise the bid is ignored.
+     /// `_time` must be a multiple of 24*3600, otherwise the bid is lost.
     /// Need to approve this contract for transfers of collateral before calling this function.
     function bidOn(uint _time, uint256 _collateralAmount) public {
         require(block.timestamp < _time);
@@ -71,11 +71,9 @@ contract Token is ERC20, ERC2771Context, Ownable {
         require(block.timestamp >= _time);
         require(_time % (24*3600) == 0);
 
-        // TODO: Check calculations.
         int128 _ourTokenAmount = growthRate.mul(int128(uint128(block.timestamp))).exp_2();
         int128 _share = ABDKMath64x64.divu(bids[_time][_msgSender()], totalBids[_time]);
         _mint(_account, uint256(int256(_ourTokenAmount.mul(_share))));
-        collateral.transfer(beneficiant, totalBids[_time]);
     }
 
     function _msgSender() internal view virtual override(Context, ERC2771Context) returns (address) {
