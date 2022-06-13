@@ -57,7 +57,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
         }
     }
 
-     /// `_time` must be a multiple of 24*3600, otherwise the bid is lost.
+    /// `_time` must be a multiple of 24*3600, otherwise the bid is lost.
     /// Need to approve this contract for transfers of collateral before calling this function.
     function bidOn(uint _time, uint256 _collateralAmount) public {
         require(block.timestamp < _time);
