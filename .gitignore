@@ -13,5 +13,3 @@ dist
 #Hardhat files
 cache
 artifacts
-
-deployed-addresses.json
