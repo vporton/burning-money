@@ -10,25 +10,6 @@ import { ABDKMath64x64 } from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 import "@chainlink/contracts/src/v0.8/Denominations.sol";
 
-/**
- * @title Simple Interface to interact with Universal Client Contract
- * @notice Client Address 0x8ea35EdC1709ea0Ea2C86241C7D1C84Fd0dDeB11
- */
-interface ChainlinkInterface {
-
-  /**
-   * @notice Creates a Chainlink request with the job specification ID,
-   * @notice and sends it to the Oracle.
-   * @notice _oracle The address of the Oracle contract fixed top
-   * @notice _payment For this example the PAYMENT is set to zero
-   * @param _jobId The job spec ID that we want to call in string format
-   */
-    function requestPrice(string calldata _jobId) external;
-
-    function currentPrice() external view returns (uint);
-
-}
-
 contract Token is ERC20, ERC2771Context, Ownable {
     using ABDKMath64x64 for int128;
 
@@ -46,7 +27,6 @@ contract Token is ERC20, ERC2771Context, Ownable {
     constructor(
         IERC20 _collateral,
         int128 _growthRate,
-        ChainlinkInterface _collateralOracle, // 0x6f6371a780324b90aaf195a0d39c723c // DOT to USD // https://docs.moonbeam.network/builders/integrations/oracles/chainlink/
         address trustedForwarder_,
         address _beneficiant,
         string memory _name,
@@ -56,7 +36,6 @@ contract Token is ERC20, ERC2771Context, Ownable {
     {
         collateral = _collateral;
         growthRate = _growthRate;
-        collateralOracle = _collateralOracle;
         beneficiant = _beneficiant;
     }
 
@@ -67,10 +46,6 @@ contract Token is ERC20, ERC2771Context, Ownable {
     function setReferral(address _user, address _referral) public {
         require(referrals[_user] == address(0));
         referrals[_user] = _referral;
-    }
-
-    function getCollateralPrice() internal view returns (uint256) {
-        return collateralOracle.currentPrice();
     }
 
     function _mint(address account, uint256 amount) internal override {
@@ -101,9 +76,8 @@ contract Token is ERC20, ERC2771Context, Ownable {
 
         // TODO: Check calculations.
         int128 _ourTokenAmount = growthRate.mul(int128(uint128(block.timestamp))).exp_2();
-        int128 _price = _ourTokenAmount.mul(10000_0000).div(int128(uint128(getCollateralPrice() * (1<<64))));
         int128 _share = ABDKMath64x64.divu(bids[_time][_msgSender()], totalBids[_time]);
-        _mint(_account, uint256(int256(_ourTokenAmount.mul(_price.mul(_share)))));
+        _mint(_account, uint256(int256(_ourTokenAmount.mul(_share))));
         collateral.transfer(beneficiant, totalBids[_time]);
     }
 
