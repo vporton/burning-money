@@ -7,8 +7,6 @@ import { Ownable } from "openzeppelin-solidity/contracts/access/Ownable.sol";
 import { ERC2771Context } from "openzeppelin-solidity/contracts/metatx/ERC2771Context.sol";
 import { Context } from "openzeppelin-solidity/contracts/utils/Context.sol";
 import { ABDKMath64x64 } from "abdk-libraries-solidity/ABDKMath64x64.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
-import "@chainlink/contracts/src/v0.8/Denominations.sol";
 
 contract Token is ERC20, ERC2771Context, Ownable {
     using ABDKMath64x64 for int128;
@@ -17,7 +15,6 @@ contract Token is ERC20, ERC2771Context, Ownable {
 
     IERC20 public collateral;
     int128 public growthRate;
-    ChainlinkInterface internal collateralOracle;
     mapping (address => address) public referrals;
     address public beneficiant;
     mapping (uint => mapping(address => uint256)) public bids; // time => (address => bid)
