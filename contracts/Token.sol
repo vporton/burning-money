@@ -24,12 +24,12 @@ contract Token is ERC20, ERC2771Context, Ownable {
     constructor(
         IERC20 _collateral,
         int128 _growthRate,
-        address trustedForwarder_,
+        address _trustedForwarder,
         address _beneficiant,
         string memory _name,
         string memory _symbol
     )
-        ERC2771Context(trustedForwarder_) ERC20(_name, _symbol)
+        ERC2771Context(_trustedForwarder) ERC20(_name, _symbol)
     {
         collateral = _collateral;
         growthRate = _growthRate;
