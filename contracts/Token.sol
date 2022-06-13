@@ -71,7 +71,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
         require(block.timestamp >= _time);
         require(_time % (24*3600) == 0);
 
-        int128 _ourTokenAmount = growthRate.mul(int128(uint128(block.timestamp))).exp_2();
+        int128 _ourTokenAmount = growthRate.mul(int128(uint128(_time))).exp_2();
         int128 _share = ABDKMath64x64.divu(bids[_time][_msgSender()], totalBids[_time]);
         _mint(_account, uint256(int256(_ourTokenAmount.mul(_share))));
     }
