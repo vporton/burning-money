@@ -6,7 +6,7 @@ import deployed from "../../dist/deployed-addresses.json";
 import { CHAINS } from './data';
 import { abi as tokenAbi } from "../../artifacts/contracts/Token.sol/Token.json";
 import { useEffect, useState } from 'react';
-// const { utils } = ethers;
+const { utils } = ethers;
 
 export default function Bid() {
     const minDate = new Date();
@@ -28,7 +28,7 @@ export default function Bid() {
         }
         const token = new ethers.Contract(deployed[CHAINS[chainId]].Token, tokenAbi);
         const day = Math.floor(Number(date) / (24*3600))
-        await token.connect(provider.getSigner(0)).bidOn(day, ethers.utils.parseEther(bidAmount));
+        await token.connect(provider.getSigner(0)).bidOn(day, utils.parseEther(bidAmount));
     }
     
     return (
