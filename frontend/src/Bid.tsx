@@ -21,7 +21,7 @@ export default function Bid() {
         let provider = new ethers.providers.JsonRpcProvider();
         const { chainId } = await provider.getNetwork();
         const token = await ethers.getContractAt(tokenAbi, deployed[chainId].Token);
-        const day = Math.floor(date / (24*3600))
+        const day = Math.floor(Number(date) / (24*3600))
         await token.bidOn(day, utils.parseEther(bidAmount));
     }
     
