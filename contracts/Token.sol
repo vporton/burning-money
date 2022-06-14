@@ -11,8 +11,6 @@ import { ABDKMath64x64 } from "abdk-libraries-solidity/ABDKMath64x64.sol";
 contract Token is ERC20, ERC2771Context, Ownable {
     using ABDKMath64x64 for int128;
 
-    // TODO: Events.
-
     IERC20 public collateral;
     int128 public growthRate;
     mapping (address => address) public referrals;
@@ -21,7 +19,6 @@ contract Token is ERC20, ERC2771Context, Ownable {
     mapping (uint => uint256) public totalBids; // address => total bid
     mapping (uint => mapping(address => bool)) public withdrawn; // time => (address => withdrawn)
 
-    // TODO: premint
     constructor(
         IERC20 _collateral,
         int128 _growthRate,
