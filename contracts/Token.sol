@@ -35,27 +35,31 @@ contract Token is ERC20, ERC2771Context, Ownable {
         collateral = _collateral;
         growthRate = _growthRate;
         beneficiant = _beneficiant;
+        emit TokenCreated(_collateral, _growthRate, _trustedForwarder, _beneficiant, _name, _symbol);
     }
 
     function changeBeneficiant(address _beneficiant) public onlyOwner {
         beneficiant = _beneficiant;
+        emit BeneficiantChanged(_beneficiant);
     }
 
-    function setReferral(address _user, address _referral) public {
-        require(referrals[_user] == address(0));
-        referrals[_user] = _referral;
+    function setReferral(address _referral) public {
+        require(referrals[_msgSender()] == address(0));
+        referrals[_msgSender()] = _referral;
+        emit SetReferral(_msgSender(), _referral);
     }
 
-    function _mint(address account, uint256 amount) internal override {
-        ERC20._mint(account, amount);
-        address _referral = referrals[account];
+    function _mint(address _account, uint256 _amount) internal override {
+        ERC20._mint(_account, _amount);
+        address _referral = referrals[_account];
         if (_referral != address(0)) {
-            ERC20._mint(_referral, amount / 4);  // 25% first level referral
+            ERC20._mint(_referral, _amount / 4);  // 25% first level referral
             _referral = referrals[_referral];
             if (_referral != address(0)) {
-                ERC20._mint(_referral, amount / 10); // 10% second level referral
+                ERC20._mint(_referral, _amount / 10); // 10% second level referral
             }
         }
+        emit OurMint(_msgSender(), _account, _amount);
     }
 
     /// `_time` must be a multiple of 24*3600, otherwise the bid is lost.
@@ -66,6 +70,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
         totalBids[_day] += _collateralAmount; // Solidity 0.8 overflow protection
         bids[_day][_msgSender()] += _collateralAmount;
         collateral.transferFrom(_msgSender(), beneficiant, _collateralAmount);
+        emit Bid(_msgSender(), _day, _collateralAmount);
     }
 
     function withdrawalAmount(uint _day) public view returns(uint256) {
@@ -79,7 +84,9 @@ contract Token is ERC20, ERC2771Context, Ownable {
         require(block.timestamp >= _day * (24*3600), "Too early to withdraw");
         require(!withdrawn[_day][_account], "already withdrawn");
         withdrawn[_day][_account] = true;
-        _mint(_account, withdrawalAmount(_day));
+        uint256 _amount = withdrawalAmount(_day);
+        _mint(_account, _amount);
+        emit Withdraw(_msgSender(), _day, _account, _amount);
     }
 
     function _msgSender() internal view virtual override(Context, ERC2771Context) returns (address) {
@@ -89,4 +96,18 @@ contract Token is ERC20, ERC2771Context, Ownable {
     function _msgData() internal view virtual override(Context, ERC2771Context) returns (bytes calldata) {
         return ERC2771Context._msgData();
     }
+
+    event TokenCreated(
+        IERC20 collateral,
+        int128 growthRate,
+        address trustedForwarder,
+        address beneficiant,
+        string name,
+        string symbol
+    );
+    event BeneficiantChanged(address beneficiant);
+    event SetReferral(address sender, address referral);
+    event OurMint(address sender, address account, uint256 amount);
+    event Bid(address sender, uint day, uint256 collateralAmount);
+    event Withdraw(address sender, uint day, address account, uint256 amount);
 }
