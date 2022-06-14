@@ -108,6 +108,6 @@ contract Token is ERC20, ERC2771Context, Ownable {
     event BeneficiantChanged(address beneficiant);
     event SetReferral(address sender, address referral);
     event OurMint(address sender, address account, uint256 amount);
-    event Bid(address sender, uint day, uint256 collateralAmount);
+    event Bid(address sender, uint day, uint256 amount);
     event Withdraw(address sender, uint day, address account, uint256 amount);
 }
