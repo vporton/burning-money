@@ -5,8 +5,9 @@ import 'react-calendar/dist/Calendar.css';
 import deployed from "../../dist/deployed-addresses.json";
 import { CHAINS } from './data';
 import { abi as tokenAbi } from "../../artifacts/contracts/Token.sol/Token.json";
+import { abi as erc20Abi } from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { useEffect, useState } from 'react';
-const { utils } = ethers;
+const { utils, BigNumber: BN } = ethers;
 
 export default function Bid() {
     const minDate = new Date();
@@ -27,8 +28,18 @@ export default function Bid() {
             return;
         }
         const token = new ethers.Contract(deployed[CHAINS[chainId]].Token, tokenAbi);
-        const day = Math.floor(Number(date) / (24*3600))
-        await token.connect(provider.getSigner(0)).bidOn(day, utils.parseEther(bidAmount));
+        const collateral = new ethers.Contract(deployed[CHAINS[chainId]].collateral, erc20Abi);
+        const day = Math.floor(date.getTime() / 1000 / (24*3600));
+        // const estimation = await token.estimateGas.bidOn(day, utils.parseEther(bidAmount)); // TODO
+        // alert(estimation)
+        const allowance = await collateral.connect(provider.getSigner(0)).allowance(await (await provider.getSigner(0)).getAddress(), token.address);
+        if(allowance.lt(utils.parseEther(bidAmount))) {
+            await collateral.connect(provider.getSigner(0)).approve(token.address, utils.parseEther(bidAmount));
+        }
+        await token.connect(provider.getSigner(0)).bidOn(day, utils.parseEther(bidAmount), {
+            // gasLimit: String(estimation.mul(BN.from(1.3))),
+            gasLimit: '200000',
+        });
     }
     
     return (

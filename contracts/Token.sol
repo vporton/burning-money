@@ -16,8 +16,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
     mapping (address => address) public referrals;
     address public beneficiant;
     mapping (uint => mapping(address => uint256)) public bids; // time => (address => bid)
-    mapping (uint => uint256) public totalBids; // address => total bid
-    mapping (uint => mapping(address => bool)) public withdrawn; // time => (address => withdrawn)
+    mapping (uint => uint256) public totalBids; // time => total bid
 
     constructor(
         IERC20 _collateral,
@@ -65,7 +64,9 @@ contract Token is ERC20, ERC2771Context, Ownable {
         uint _curDay = block.timestamp / (24*3600);
         require(_curDay < _day, "You bade too late");
         totalBids[_day] += _collateralAmount; // Solidity 0.8 overflow protection
-        bids[_day][_msgSender()] += _collateralAmount;
+        unchecked { // Overflow checked by the previous statement.
+            bids[_day][_msgSender()] += _collateralAmount;
+        }
         collateral.transferFrom(_msgSender(), beneficiant, _collateralAmount);
         emit Bid(_msgSender(), _day, _collateralAmount);
     }
@@ -79,10 +80,9 @@ contract Token is ERC20, ERC2771Context, Ownable {
     // Some time in the future overflow will happen.
     function withdraw(uint _day, address _account) public {
         require(block.timestamp >= _day * (24*3600), "Too early to withdraw");
-        require(!withdrawn[_day][_account], "already withdrawn");
-        withdrawn[_day][_account] = true;
         uint256 _amount = withdrawalAmount(_day);
         _mint(_account, _amount);
+        bids[_day][_account] = 0;
         emit Withdraw(_msgSender(), _day, _account, _amount);
     }
 

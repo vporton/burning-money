@@ -20,18 +20,16 @@ export default function Withdraw() {
         (window as any).ethereum.enable().then(async () => {
             const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
             const { chainId } = await provider.getNetwork();
-            const day = Math.floor(Number(date) / (24*3600));
+            const day = Math.floor(date.getTime() / 1000 / (24*3600));
             const token = new ethers.Contract(deployed[CHAINS[chainId]].Token, tokenAbi);
-            const totalBid = await token.connect(provider.getSigner(0)).callStatic.totalBids(day);
+            const totalBid = await token.connect(provider.getSigner(0)).totalBids(BN.from(day));
             if(totalBid.eq(BN.from(0))) {
                 setAmount(0);
             } else {
-                token.connect(provider.getSigner(0)).callStatic.withdrawalAmount(day).then(amount => {
+                token.connect(provider.getSigner(0)).withdrawalAmount(day).then(amount => {
                     setAmount(amount);
                 });
             }
-            const withdrawn = await token.connect(provider.getSigner(0)).callStatic.totalBids(day);
-            setWithdrawn(!withdrawn.eq(BN.from(0)));
         });
     }, [date]);
 
@@ -46,12 +44,15 @@ export default function Withdraw() {
         }
         const token = new ethers.Contract(deployed[CHAINS[chainId]].Token, tokenAbi);
         const day = Math.floor(Number(date) / (24*3600))
-        await token.connect(provider.getSigner(0)).withdraw(day, await provider.getSigner(0).getAddress());
+        await token.connect(provider.getSigner(0)).withdraw(day, await provider.getSigner(0).getAddress(), {
+            gasLimit: '200000',
+        });
     }
     
     return (
         <>
-            <p>Withdraw for bid date: <Calendar maxDate={maxDate} onChange={setDate}/></p>
+            {/*<p>Withdraw for bid date: <Calendar maxDate={maxDate} onChange={setDate}/></p> FIXME: Uncomment.*/}
+            <p>Withdraw for bid date: <Calendar onChange={setDate}/></p>
             <p><button onClick={withdraw}>Withdraw</button> <span>{amount === null ? '' : utils.formatEther(amount)}</span> WT{" "}
                 {withdrawn ? "already withdrawn" : "not withdrawn"}
             </p>
