@@ -6,14 +6,10 @@ use actix_web::{App, HttpServer, web};
 use actix_web::web::Data;
 use env_logger::TimestampPrecision;
 use clap::Parser;
-use ethers_core::abi::ethereum_types::Secret;
 use ethkey::EthAccount;
-use ethsign::Protected;
 use lambda_web::{is_running_on_lambda, LambdaError, run_actix_on_lambda};
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
 use crate::pages::{about_us, initiate_payment, not_found};
-
-#[macro_use] extern crate lazy_static;
 
 mod our_db_pool;
 mod pages;
