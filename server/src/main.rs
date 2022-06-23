@@ -7,7 +7,7 @@ use actix_web::web::Data;
 use env_logger::TimestampPrecision;
 use clap::Parser;
 use ethkey::EthAccount;
-use lambda_web::{is_running_on_lambda, LambdaError, run_actix_on_lambda};
+use lambda_web::{is_running_on_lambda, run_actix_on_lambda};
 use errors::CannotLoadOrGenerateEthereumKeyError;
 use crate::errors::MyError;
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
