@@ -1,18 +1,23 @@
 #[macro_use] extern crate diesel;
 use serde_derive::Deserialize;
 use std::fs;
+use std::sync::Arc;
 use actix_web::{App, HttpServer, web};
 use actix_web::web::Data;
 use env_logger::TimestampPrecision;
 use clap::Parser;
+use ethers_core::abi::ethereum_types::Secret;
+use ethkey::EthAccount;
+use ethsign::Protected;
 use lambda_web::{is_running_on_lambda, LambdaError, run_actix_on_lambda};
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
 use crate::pages::{about_us, initiate_payment, not_found};
 
+#[macro_use] extern crate lazy_static;
+
 mod our_db_pool;
 mod pages;
 mod errors;
-mod crypto;
 mod schema;
 
 #[derive(Clone, Deserialize)]
@@ -20,8 +25,14 @@ pub struct Config {
     host: String,
     port: u16,
     url_prefix: String,
-    super_secret_file: String,
+    secrets: SecretsConfig,
     database: DBConfig,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct SecretsConfig {
+    ethereum_key_file: String,
+    ethereum_password: String,
 }
 
 #[derive(Clone, Deserialize)]
@@ -31,7 +42,9 @@ pub struct DBConfig {
 
 #[derive(Clone)]
 pub struct Common {
+    config: Config,
     db_pool: MyPool,
+    ethereum_key: Arc<Box<EthAccount>>,
 }
 
 #[derive(Parser)]
@@ -52,16 +65,25 @@ async fn main() -> Result<(), LambdaError> {
     let config: Config = toml::from_str(fs::read_to_string(args.config.as_str())?.as_str())?;
 
     let manager = MyDBConnectionManager::new(config.database.url.clone());
+    let eth_account = match EthAccount::load_or_generate(
+        config.secrets.ethereum_key_file.clone(),
+        config.secrets.ethereum_password.clone()
+    ) {
+        Ok(val) => val,
+        Err(err) => panic!("{}", err), // a trouble with Sync workaround
+    };
+    let config2 = config.clone();
     let common = Common {
+        config,
         db_pool: db_pool_builder()
             .connection_customizer(Box::new(MyDBConnectionCustomizer::new()))
             .build(manager)
             .expect("Cannot connect to DB."),
+        ethereum_key: Arc::new(eth_account),
     };
 
-    let config2 = config.clone();
     let factory = move || App::new()
-        .app_data(Data::new(config2.clone()))
+        // .app_data(Data::new(config2.clone()))
         .app_data(Data::new(common.clone()))
         .service(about_us)
         .service(initiate_payment)
@@ -76,7 +98,7 @@ async fn main() -> Result<(), LambdaError> {
         run_actix_on_lambda(factory).await?; // Run on AWS Lambda.
     } else {
         HttpServer::new(factory)
-            .bind((config.host.as_str(), config.port))?
+            .bind((config2.host.as_str(), config2.port))?
             .run()
             .await?;
     }
