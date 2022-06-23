@@ -8,6 +8,8 @@ use env_logger::TimestampPrecision;
 use clap::Parser;
 use ethkey::EthAccount;
 use lambda_web::{is_running_on_lambda, LambdaError, run_actix_on_lambda};
+use errors::CannotLoadOrGenerateEthereumKeyError;
+use crate::errors::MyError;
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
 use crate::pages::{about_us, initiate_payment, not_found};
 
@@ -51,7 +53,7 @@ struct Cli {
 }
 
 #[actix_web::main]
-async fn main() -> Result<(), LambdaError> {
+async fn main() -> Result<(), MyError> {
     env_logger::builder()
         .format_timestamp(Some(TimestampPrecision::Millis))
         .init();
@@ -66,7 +68,7 @@ async fn main() -> Result<(), LambdaError> {
         config.secrets.ethereum_password.clone()
     ) {
         Ok(val) => val,
-        Err(err) => panic!("{}", err), // a trouble with Sync workaround
+        Err(err) => Err(CannotLoadOrGenerateEthereumKeyError::new(format!("{}", err)))?, // a trouble with Sync workaround
     };
     let config2 = config.clone();
     let common = Common {
