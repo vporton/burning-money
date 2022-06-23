@@ -11,7 +11,7 @@ use lambda_web::{is_running_on_lambda, LambdaError, run_actix_on_lambda};
 use errors::CannotLoadOrGenerateEthereumKeyError;
 use crate::errors::MyError;
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
-use crate::pages::{about_us, initiate_payment, not_found};
+use crate::pages::{about_us, not_found};
 
 mod our_db_pool;
 mod pages;
@@ -84,7 +84,6 @@ async fn main() -> Result<(), MyError> {
         // .app_data(Data::new(config2.clone()))
         .app_data(Data::new(common.clone()))
         .service(about_us)
-        .service(initiate_payment)
         .service(
             actix_files::Files::new("/media", "media").use_last_modified(true),
         )

@@ -32,19 +32,6 @@ pub async fn not_found() -> actix_web::Result<HttpResponse> {
         .body(body))
 }
 
-#[get("/pay")]
-pub async fn initiate_payment(config: web::Data<Config>) -> Result<impl Responder, MyError> {
-    #[derive(Template)]
-    #[template(path = "pay.html", escape = "html")]
-    struct Template {
-        url_prefix: String,
-    }
-
-    Ok(Template {
-        url_prefix: config.url_prefix.clone(),
-    })
-}
-
 #[derive(Deserialize)]
 pub struct CreateAccountQuery {
     user_account: String,
