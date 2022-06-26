@@ -4,6 +4,8 @@ use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession
 use serde::Deserialize;
 use crate::{Common, MyError};
 
+// We follow https://stripe.com/docs/payments/finalize-payments-on-the-server
+
 #[derive(Deserialize)]
 pub struct CreateStripeCheckout {
     fiat_amount: f64,
