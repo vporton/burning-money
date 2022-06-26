@@ -1,11 +1,10 @@
 use actix_web::{Responder, get, HttpResponse, web};
-use actix_web::http::header::{CONTENT_TYPE, LOCATION};
 use askama::Template;
 use diesel::{ExpressionMethods, insert_into, RunQueryDsl};
 use ethers_core::types::H160;
 use serde_json::json;
 use serde::Deserialize;
-use crate::{Common, Config};
+use crate::Config;
 use crate::errors::MyError;
 
 #[get("/aboutus")]

@@ -5,7 +5,7 @@ use serde::Deserialize;
 use crate::{Common, MyError};
 
 #[derive(Deserialize)]
-struct CreateStripeCheckout {
+pub struct CreateStripeCheckout {
     fiat_amount: f64,
 }
 
@@ -14,7 +14,7 @@ pub async fn create_stripe_checkout(q: web::Query<CreateStripeCheckout>, common:
     let client = Client::new(common.config.stripe.secret_key.clone());
 
     let product = {
-        let mut create_product = CreateProduct::new("Mining World Token");
+        let create_product = CreateProduct::new("Mining World Token");
         Product::create(&client, create_product).await?
     };
 
