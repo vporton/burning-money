@@ -50,6 +50,7 @@ export default function Bid() {
     }
 
     async function ccBid() {
+        // TODO: fiat_amount in 0.50 .. 999999.99
         console.log("open: ", backendUrlPrefix + "/create-stripe-checkout");
         open(backendUrlPrefix + "/create-stripe-checkout?fiat_amount=" + bidCCAmount, '_self');
     }
