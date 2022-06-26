@@ -11,11 +11,13 @@ use lambda_web::{is_running_on_lambda, run_actix_on_lambda};
 use errors::CannotLoadOrGenerateEthereumKeyError;
 use crate::errors::MyError;
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
-use crate::pages::{about_us, create_stripe_checkout, not_found};
+use crate::pages::{about_us, not_found};
+use crate::stripe::create_stripe_checkout;
 
 mod our_db_pool;
 mod pages;
 mod errors;
+mod stripe;
 mod schema;
 
 #[derive(Clone, Deserialize)]
