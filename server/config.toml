@@ -8,3 +8,8 @@ ethreum_password = "ooP2Aigodee8OoM3"
 
 [database]
 url = "postgres://rserver:123@localhost/rserver"
+
+[stripe]
+# The following are testing credentials:
+public_key = "pk_test_51KQyqyJ2iRZ5a1XlawDeIDEBvPT88i81gRr1wy6b4j9gfNqkT5yhDZstUpIdjmovrnmD4nKkoQ5fmzhJhzZZvEZH00updo0A3n"
+secret_key = "sk_test_51KQyqyJ2iRZ5a1XloMYifZLTVyNYr2BueN0YZEILU2CXHEwozbiDZRVXZVCjXZo8VqC91HEGb5ccnuJIz9XxSGiG00mjhUMsDi"

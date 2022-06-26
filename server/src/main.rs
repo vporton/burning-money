@@ -11,7 +11,7 @@ use lambda_web::{is_running_on_lambda, run_actix_on_lambda};
 use errors::CannotLoadOrGenerateEthereumKeyError;
 use crate::errors::MyError;
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
-use crate::pages::{about_us, not_found};
+use crate::pages::{about_us, create_stripe_checkout, not_found};
 
 mod our_db_pool;
 mod pages;
@@ -25,6 +25,7 @@ pub struct Config {
     url_prefix: String,
     secrets: SecretsConfig,
     database: DBConfig,
+    stripe: StripeConfig,
 }
 
 #[derive(Clone, Deserialize)]
@@ -36,6 +37,12 @@ pub struct SecretsConfig {
 #[derive(Clone, Deserialize)]
 pub struct DBConfig {
     url: String,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct StripeConfig {
+    public_key: String,
+    secret_key: String,
 }
 
 #[derive(Clone)]
@@ -84,6 +91,7 @@ async fn main() -> Result<(), MyError> {
         // .app_data(Data::new(config2.clone()))
         .app_data(Data::new(common.clone()))
         .service(about_us)
+        .service(create_stripe_checkout)
         .service(
             actix_files::Files::new("/media", "media").use_last_modified(true),
         )
