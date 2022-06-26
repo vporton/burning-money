@@ -44,11 +44,11 @@ export default function Bid() {
     
     return (
         <>
-            <p>You mine World Token by paying in Polkatod DOT.</p>
+            <p>You mine World Token by paying in Polkatod Glimmer.</p>
             <p>You choose a future date for your bid. On or after this date you can withdraw
                 World Token in amount equal the share of you bid among all bids on this date
                 multiplied by an exponent of time (for the day of bidding).</p>
-            <p>Amount of DOT you pay: <input type="number" defaultValue={bidAmount} onChange={e => setBidAmount(e.target.value)}/></p>
+            <p>Amount of GLMR you pay: <input type="number" defaultValue={bidAmount} onChange={e => setBidAmount(e.target.value)}/></p>
             <p>Bid date: <Calendar minDate={minDate} onChange={setDate}/></p>
             <p><button onClick={bid} disabled={!bidButtonActive}>Bid</button></p>
         </>
