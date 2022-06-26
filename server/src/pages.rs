@@ -5,7 +5,7 @@ use diesel::{ExpressionMethods, insert_into, RunQueryDsl};
 use ethers_core::types::H160;
 use serde_json::json;
 use serde::Deserialize;
-use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems};
+use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use crate::{Common, Config};
 use crate::errors::MyError;
 
@@ -35,28 +35,43 @@ pub async fn not_found() -> actix_web::Result<HttpResponse> {
 
 #[derive(Deserialize)]
 struct CreateStripeCheckout {
-    price: f64,
-    quantity: f64,
+    fiat_amount: f64,
 }
 
 #[get("/create-stripe-checkout")]
-pub async fn create_stripe_checkout(q: web::Query<CreateStripeCheckout>, config: web::Data<Config>) -> Result<impl Responder, MyError> {
-    let client = Client::new(config.stripe.secret_key.clone());
+pub async fn create_stripe_checkout(q: web::Query<CreateStripeCheckout>, common: web::Data<Common>) -> Result<impl Responder, MyError> {
+    let client = Client::new(common.config.stripe.secret_key.clone());
+
+    let product = {
+        let mut create_product = CreateProduct::new("Mining");
+        Product::create(&client, create_product).await?
+    };
+
+    let price = {
+        let mut create_price = CreatePrice::new(Currency::USD);
+        create_price.product = Some(IdOrCreate::Id(&product.id));
+        create_price.unit_amount = Some((q.fiat_amount * 100.0) as i64);
+        create_price.expand = &["product"];
+        Price::create(&client, create_price).await?
+    };
 
     let mut params =
-        CreateCheckoutSession::new("http://test.com/cancel", "http://test.com/success");
+        CreateCheckoutSession::new("http://test.com/cancel", "http://test.com/success"); // FIXME
     // params.customer = Some(customer.id);
     params.mode = Some(CheckoutSessionMode::Payment);
     params.line_items = Some(vec![CreateCheckoutSessionLineItems {
-        quantity: Some((q.quantity * 1e18) as u64), // FIXME
-        price: Some((q.price / 1e18).to_string()), // FIXME
-        // amount: Some((q.quantity * 1e18) as u64), // FIXME
+        price: Some(price.id.to_string()),
+        quantity: Some(1), // FIXME
         ..Default::default()
     }]);
     params.expand = &["line_items", "line_items.data.price.product"];
 
-    let session = CheckoutSession::create(&client, params).await.unwrap(); // FIXME: unwrap();
-    Ok(HttpResponse::TemporaryRedirect().append_header((LOCATION, session.url.unwrap())).body("")) // FIXME: unwrap();
+    let session = CheckoutSession::create(&client, params).await?;
+    if let Some(url) = session.url {
+        Ok(HttpResponse::TemporaryRedirect().append_header((LOCATION, url)).body(""))
+    } else {
+        Ok(HttpResponse::Ok().body("Stripe didn't return a URL.")) // FIXME
+    }
 }
 
 #[derive(Deserialize)]
