@@ -3,8 +3,8 @@ port = 8080
 url_prefix = "http://localhost"
 
 [secrets]
-ethreum_key_file = "supersecret.priv"
-ethreum_password = "ooP2Aigodee8OoM3"
+ethereum_key_file = "supersecret.priv"
+ethereum_password = "ooP2Aigodee8OoM3"
 
 [database]
 url = "postgres://rserver:123@localhost/rserver"
