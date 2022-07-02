@@ -16,7 +16,7 @@ pub async fn create_stripe_checkout(q: web::Query<CreateStripeCheckout>, common:
     let client = Client::new(common.config.stripe.secret_key.clone());
 
     let product = {
-        let create_product = CreateProduct::new("Mining World Token");
+        let create_product = CreateProduct::new("Mining CardToken");
         Product::create(&client, create_product).await?
     };
 

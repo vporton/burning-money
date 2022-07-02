@@ -12,12 +12,12 @@ module.exports = async ({getNamedAccounts, getUnnamedAccounts, deployments}) => 
 
     const salt = ethers.BigNumber.from(31337);
     const domainData = {
-        name: "World Token",
+        name: "CardToken",
         version: "1",
         verifyingContract: forwarder.address,
         salt: ethers.utils.hexZeroPad(salt.toHexString(), 32)
     };
-    await forwarder.registerDomainSeparator("World Token", "1");
+    await forwarder.registerDomainSeparator("CardToken", "1");
     const domainSeparator = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
         ["bytes32", "bytes32", "bytes32", "address", "bytes32"],

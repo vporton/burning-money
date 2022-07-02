@@ -56,9 +56,9 @@ export default function Bid() {
 
     return (
         <>
-            <p>You mine World Token by paying in Polkatod Glimmer.</p>
+            <p>You mine CardToken by paying in Polkatod Glimmer.</p>
             <p>You choose a future date for your bid. On or after this date you can withdraw
-                World Token in amount equal the share of you bid among all bids on this date
+                CardToken in amount equal the share of you bid among all bids on this date
                 multiplied by an exponent of time (for the day of bidding).</p>
             <p>Bid date: <Calendar minDate={minDate} onChange={setDate}/></p>
             <Tabs>

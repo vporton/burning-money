@@ -16,7 +16,7 @@ function MyNavLink(props) {
 
 export function App() {
     return <>
-        <h1>Bid world token</h1>
+        <h1>Bid CardToken</h1>
         <BrowserRouter>
             <nav className="mainNav">
                 <MyNavLink to={`/bid`}>Bid DOT token</MyNavLink> |{" "}
