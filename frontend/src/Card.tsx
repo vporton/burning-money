@@ -13,8 +13,8 @@ export default function Card() {
             After you paid, our system will initiate money transfer to your account.
             <strong>You must pay during 12 hours since clicking the button. If you pay late,
                 your payment may be stalled in a crypto account with no one being able to get the money.</strong>
-            <PaymentForm/>
         </p>
+        <PaymentForm/>
     </>
 }
 
@@ -26,6 +26,7 @@ function PaymentForm(userAddress) {
             const stripe_pubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text();
             const res = await (await fetch(backendUrlPrefix + "/create-payment-intent")).json();
             const client_secret: string = res["client_secret"];
+            console.log("TTT", stripe_pubkey, client_secret);
 
             const stripePromise_: Promise<Stripe | null> = loadStripe(stripe_pubkey);
 

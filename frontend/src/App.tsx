@@ -21,7 +21,7 @@ export function App() {
             <BrowserRouter>
                 <nav className="mainNav">
                     <MyNavLink to={`/bid`}>Bid DOT token</MyNavLink> |{" "}
-                    {/*<MyNavLink to={`/card`}>Bid with a card or bank</MyNavLink> |{" "}*/}
+                    <MyNavLink to={`/card`}>Bid with a card or bank</MyNavLink> |{" "}
                     <MyNavLink to={`/withdraw`}>Withdraw earninigs</MyNavLink>
                 </nav>
                 <Routes>
