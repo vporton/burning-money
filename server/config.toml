@@ -1,6 +1,7 @@
 host = "localhost"
 port = 8080
 url_prefix = "http://localhost"
+frontend_url_prefix = "http://localhost:1234"
 
 [secrets]
 ethereum_key_file = "supersecret.priv"

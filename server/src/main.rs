@@ -4,6 +4,7 @@ extern crate core;
 use serde_derive::Deserialize;
 use std::fs;
 use std::sync::Arc;
+use actix_cors::Cors;
 use actix_web::{App, HttpServer, web};
 use actix_web::web::Data;
 use env_logger::TimestampPrecision;
@@ -29,6 +30,7 @@ pub struct Config {
     host: String,
     port: u16,
     url_prefix: String,
+    frontend_url_prefix: String,
     secrets: SecretsConfig,
     database: DBConfig,
     stripe: StripeConfig,
@@ -93,17 +95,22 @@ async fn main() -> Result<(), MyError> {
         ethereum_key: Arc::new(eth_account),
     };
 
-    let factory = move || App::new()
-        // .app_data(Data::new(config2.clone()))
-        .app_data(Data::new(common.clone()))
-        .service(about_us)
-        .service(create_payment_intent)
-        .service(
-            actix_files::Files::new("/media", "media").use_last_modified(true),
-        )
-        .default_service(
-            web::route().to(not_found)
-        );
+    let factory = move || {
+        let cors = Cors::default() // Construct CORS middleware builder
+            .allowed_origin(&config2.frontend_url_prefix);
+        App::new()
+            .wrap(cors)
+            // .app_data(Data::new(config2.clone()))
+            .app_data(Data::new(common.clone()))
+            .service(about_us)
+            .service(create_payment_intent)
+            .service(
+                actix_files::Files::new("/media", "media").use_last_modified(true),
+            )
+            .default_service(
+                web::route().to(not_found)
+            )
+    };
 
     if is_running_on_lambda() {
         run_actix_on_lambda(factory).await?; // Run on AWS Lambda.
