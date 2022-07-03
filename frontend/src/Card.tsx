@@ -10,9 +10,7 @@ export default function Card() {
         <p>To mine an amount of CardToken corresponding to a certain amount of money, pay any amount of money
             to your account <input type="text" id="userAccount" ref={userAccount}/>
             first your account will be anonymously stored in our database and then you pay.
-            After you paid, our system will initiate money transfer to your account.
-            <strong>You must pay during 12 hours since clicking the button. If you pay late,
-                your payment may be stalled in a crypto account with no one being able to get the money.</strong>
+            After you paid, our system will initiate crypto transfer to your account.
         </p>
         <PaymentForm/>
     </>
