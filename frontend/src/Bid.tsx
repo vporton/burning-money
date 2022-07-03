@@ -60,7 +60,8 @@ export default function Bid() {
             <p>You choose a future date for your bid. On or after this date you can withdraw
                 CardToken in amount equal the share of you bid among all bids on this date
                 multiplied by an exponent of time (for the day of bidding).</p>
-            <p>Bid date: <Calendar minDate={minDate} onChange={setDate}/></p>
+            <p>Bid date:</p>
+            <Calendar minDate={minDate} onChange={setDate}/>
             <Tabs>
                 <TabList>
                     <Tab>Blockchain</Tab>
