@@ -38,6 +38,7 @@ pub enum MyError {
     // Stripe(StripeError),
     // StripeRequest(RequestError),
     Reqwest(reqwest::Error),
+    Json(serde_json::Error),
 }
 
 impl MyError {
@@ -75,6 +76,7 @@ impl Display for MyError {
             // Self::Stripe(err) => write!(f, "Stripe error: {err}"),
             // Self::StripeRequest(err) => write!(f, "Stripe request error: {err}"),
             Self::Reqwest(err) => write!(f, "Request error: {err}"),
+            Self::Json(err) => write!(f, "JSON error: {err}"),
         }
     }
 }
@@ -165,5 +167,11 @@ impl From<LambdaError> for MyError {
 impl From<reqwest::Error> for MyError {
     fn from(value: reqwest::Error) -> Self {
         Self::Reqwest(value)
+    }
+}
+
+impl From<serde_json::Error> for MyError {
+    fn from(value: serde_json::Error) -> Self {
+        Self::Json(value)
     }
 }

@@ -1,4 +1,6 @@
 #[macro_use] extern crate diesel;
+extern crate core;
+
 use serde_derive::Deserialize;
 use std::fs;
 use std::sync::Arc;

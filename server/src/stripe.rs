@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use actix_web::{Responder, get, HttpResponse, web};
 use actix_web::http::header::LOCATION;
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use crate::{Common, MyError};
 
 // We follow https://stripe.com/docs/payments/finalize-payments-on-the-server
@@ -48,6 +49,11 @@ pub struct CreateStripeCheckout {
 //     }
 // }
 
+#[get("/stripe-pubkey")]
+pub async fn stripe_public_key(q: web::Query<CreateStripeCheckout>, common: web::Data<Common>) -> impl Responder {
+    HttpResponse::Ok().body(common.config.stripe.public_key.clone())
+}
+
 #[get("/create-payment-intent")]
 pub async fn create_payment_intent(q: web::Query<CreateStripeCheckout>, common: web::Data<Common>) -> Result<impl Responder, MyError> {
     let client = reqwest::Client::builder()
@@ -59,10 +65,15 @@ pub async fn create_payment_intent(q: web::Query<CreateStripeCheckout>, common: 
     params.insert("currency", "usd");
     params.insert("automatic_payment_methods[enabled]", "true");
     params.insert("secret_key_confirmation", "required");
-    let _res = client.get("https://api.stripe.com/v1/payment_intents")
+    let res = client.get("https://api.stripe.com/v1/payment_intents")
         .basic_auth::<&str, &str>(&common.config.stripe.public_key, None)
         .header("Stripe-Version", "2020-08-27; server_side_confirmation_beta=v1")
         .form(&params)
         .send().await?;
-    Ok(HttpResponse::Ok().body("{}"))
+    #[derive(Deserialize, Serialize)]
+    struct Data {
+        client_secret: String,
+    }
+    let data: Data = serde_json::from_slice(res.bytes().await?.as_ref())?;
+    Ok(web::Json(data))
 }
