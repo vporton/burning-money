@@ -65,15 +65,16 @@ pub async fn create_payment_intent(q: web::Query<CreateStripeCheckout>, common: 
     params.insert("currency", "usd");
     params.insert("automatic_payment_methods[enabled]", "true");
     params.insert("secret_key_confirmation", "required");
-    let res = client.get("https://api.stripe.com/v1/payment_intents")
-        .basic_auth::<&str, &str>(&common.config.stripe.public_key, None)
+    let res = client.post("https://api.stripe.com/v1/payment_intents")
+        .basic_auth::<&str, &str>(&common.config.stripe.secret_key, None)
         .header("Stripe-Version", "2020-08-27; server_side_confirmation_beta=v1")
         .form(&params)
         .send().await?;
-    #[derive(Deserialize, Serialize)]
-    struct Data {
-        client_secret: String,
-    }
-    let data: Data = serde_json::from_slice(res.bytes().await?.as_ref())?;
-    Ok(web::Json(data))
+    Ok(HttpResponse::Ok().body(res.text().await?))
+    // #[derive(Deserialize, Serialize)]
+    // struct Data {
+    //     client_secret: String,
+    // }
+    // let data: Data = serde_json::from_slice(res.bytes().await?.as_ref())?;
+    // Ok(web::Json(data))
 }
