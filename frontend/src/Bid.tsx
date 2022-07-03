@@ -63,6 +63,7 @@ export default function Bid() {
                 multiplied by an exponent of time (for the day of bidding).</p>
             <p>Bid date:</p>
             <Calendar minDate={minDate} onChange={setDate}/>
+            <br/>
             <Tabs>
                 <TabList>
                     <Tab>Blockchain</Tab>
