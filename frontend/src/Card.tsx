@@ -4,11 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { backendUrlPrefix } from "../config";
 
 export default function Card() {
-    const userAccount = useRef(null);
     return <>
         <p>You mine CardToken by using a credit card or a bank account (unlike Bitcoin that is mined by costly equipment).</p>
         <p>To mine an amount of CardToken corresponding to a certain amount of money, pay any amount of money
-            to your account <input type="text" id="userAccount" ref={userAccount}/>
+            to your account 
             first your account will be anonymously stored in our database and then you pay.
             After you paid, our system will initiate crypto transfer to your account.
         </p>
@@ -19,13 +18,13 @@ export default function Card() {
 function PaymentForm(userAddress) {
     const [options, setOptions] = useState(null as unknown as object);
     const [stripePromise, setStripePromise] = useState(null as Promise<Stripe | null> | null);
+    const userAccount = useRef(null);
     useEffect(() => {
         async function doIt() {
             const stripe_pubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text();
             // TODO: If `fiat_amount` is too small, "no payment methods" error.
             const res = await (await fetch(backendUrlPrefix + "/create-payment-intent?fiat_amount=1099")).json(); // FIXME
             const client_secret: string = res["client_secret"];
-            console.log("TTT", stripe_pubkey, client_secret);
 
             const stripePromise_: Promise<Stripe | null> = loadStripe(stripe_pubkey);
 
@@ -41,8 +40,14 @@ function PaymentForm(userAddress) {
     return (
         <Elements stripe={stripePromise} options={options}>
             <form>
+                <p>
+                    <label htmlFor="userAccount">Your crypto account:</label> {" "}
+                    <input type="text" id="userAccount" ref={userAccount}/> {" "}
+                    <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
+                    <input type="number" id="fiatAmount" ref={userAccount}/>
+                </p>
                 <PaymentElement />
-                <button>Submit</button>
+                <p><button>Submit</button></p>
             </form>
         </Elements>
     );

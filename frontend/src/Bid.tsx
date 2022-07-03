@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { backendUrlPrefix } from '../config';
+import Card from './Card';
 const { utils, BigNumber: BN } = ethers;
 
 export default function Bid() {
@@ -68,13 +69,12 @@ export default function Bid() {
                     <Tab>Credit card or bank</Tab>
                 </TabList>
                 <TabPanel>
-                    <p>Amount of GLMR you pay:
+                    <p>Amount of GLMR you invest: {" "}
                         <input type="number" defaultValue={bidAmount} onChange={e => setBidAmount(e.target.value)} min="0.5" max="999999.99"/></p>
                     <p><button onClick={bid} disabled={!bidButtonActive}>Bid</button></p>
                 </TabPanel>
                 <TabPanel>
-                    <p>Amount in USD you pay: <input type="number" onChange={e => setCCAmount(e.target.value)}/></p>
-                    <p><button onClick={ccBid} disabled={!ccBidButtonActive}>Bid</button></p>
+                    <Card/>
                 </TabPanel>
             </Tabs>
         </>

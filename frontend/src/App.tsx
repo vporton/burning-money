@@ -20,13 +20,11 @@ export function App() {
             <h1>Bid CardToken</h1>
             <BrowserRouter>
                 <nav className="mainNav">
-                    <MyNavLink to={`/bid`}>Bid DOT token</MyNavLink> |{" "}
-                    <MyNavLink to={`/card`}>Bid with a card or bank</MyNavLink> |{" "}
+                    <MyNavLink to={`/bid`}>Bid</MyNavLink> |{" "}
                     <MyNavLink to={`/withdraw`}>Withdraw earninigs</MyNavLink>
                 </nav>
                 <Routes>
                     <Route path="/bid" element={<Bid/>} />
-                    <Route path="/card" element={<Card/>} />
                     <Route path="/withdraw" element={<Withdraw/>} />
                 </Routes>
             </BrowserRouter>
