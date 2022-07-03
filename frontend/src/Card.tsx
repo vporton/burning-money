@@ -24,7 +24,8 @@ function PaymentForm(userAddress) {
     useEffect(() => {
         async function doIt() {
             const stripe_pubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text();
-            const res = await (await fetch(backendUrlPrefix + "/create-payment-intent?fiat_amount=10")).json(); // FIXME
+            // TODO: If `fiat_amount` is too small, "no payment methods" error.
+            const res = await (await fetch(backendUrlPrefix + "/create-payment-intent?fiat_amount=1099")).json(); // FIXME
             const client_secret: string = res["client_secret"];
             console.log("TTT", stripe_pubkey, client_secret);
 
