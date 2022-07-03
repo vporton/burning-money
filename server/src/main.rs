@@ -15,7 +15,7 @@ use errors::CannotLoadOrGenerateEthereumKeyError;
 use crate::errors::MyError;
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
 use crate::pages::{about_us, not_found};
-use crate::stripe::create_payment_intent;
+use crate::stripe::{create_payment_intent, stripe_public_key};
 
 mod our_db_pool;
 mod pages;
@@ -103,6 +103,7 @@ async fn main() -> Result<(), MyError> {
             // .app_data(Data::new(config2.clone()))
             .app_data(Data::new(common.clone()))
             .service(about_us)
+            .service(stripe_public_key)
             .service(create_payment_intent)
             .service(
                 actix_files::Files::new("/media", "media").use_last_modified(true),

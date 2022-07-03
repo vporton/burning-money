@@ -50,7 +50,7 @@ pub struct CreateStripeCheckout {
 // }
 
 #[get("/stripe-pubkey")]
-pub async fn stripe_public_key(q: web::Query<CreateStripeCheckout>, common: web::Data<Common>) -> impl Responder {
+pub async fn stripe_public_key(common: web::Data<Common>) -> impl Responder {
     HttpResponse::Ok().body(common.config.stripe.public_key.clone())
 }
 
