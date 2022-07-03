@@ -12,13 +12,15 @@ use errors::CannotLoadOrGenerateEthereumKeyError;
 use crate::errors::MyError;
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
 use crate::pages::{about_us, not_found};
-use crate::stripe::create_stripe_checkout;
+use crate::stripe::create_payment_intent;
 
 mod our_db_pool;
 mod pages;
 mod errors;
 mod stripe;
 mod schema;
+
+static APP_USER_AGENT: &str = "CardToken seller";
 
 #[derive(Clone, Deserialize)]
 pub struct Config {
@@ -93,7 +95,7 @@ async fn main() -> Result<(), MyError> {
         // .app_data(Data::new(config2.clone()))
         .app_data(Data::new(common.clone()))
         .service(about_us)
-        .service(create_stripe_checkout)
+        .service(create_payment_intent)
         .service(
             actix_files::Files::new("/media", "media").use_last_modified(true),
         )

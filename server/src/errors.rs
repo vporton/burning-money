@@ -6,7 +6,7 @@ use actix_web::http::header::ContentType;
 use askama::Template;
 use ethers_core::abi::AbiError;
 use lambda_web::LambdaError;
-use stripe::{RequestError, StripeError};
+// use stripe::{RequestError, StripeError};
 
 #[derive(Debug)]
 pub struct CannotLoadOrGenerateEthereumKeyError(String);
@@ -35,8 +35,9 @@ pub enum MyError {
     CannotLoadOrGenerateEthereumKey(CannotLoadOrGenerateEthereumKeyError),
     Toml(toml::de::Error),
     Lambda(LambdaError),
-    Stripe(StripeError),
-    StripeRequest(RequestError),
+    // Stripe(StripeError),
+    // StripeRequest(RequestError),
+    Reqwest(reqwest::Error),
 }
 
 impl MyError {
@@ -71,8 +72,9 @@ impl Display for MyError {
             Self::CannotLoadOrGenerateEthereumKey(err) => write!(f, "Ethereum key error: {err}"),
             Self::Toml(err) => write!(f, "INI file error: {err}"),
             Self::Lambda(err) => write!(f, "AWS Lambda error: {err}"),
-            Self::Stripe(err) => write!(f, "Stripe error: {err}"),
-            Self::StripeRequest(err) => write!(f, "Stripe request error: {err}"),
+            // Self::Stripe(err) => write!(f, "Stripe error: {err}"),
+            // Self::StripeRequest(err) => write!(f, "Stripe request error: {err}"),
+            Self::Reqwest(err) => write!(f, "Request error: {err}"),
         }
     }
 }
@@ -150,12 +152,18 @@ impl From<LambdaError> for MyError {
     }
 }
 
-impl From<StripeError> for MyError {
-    fn from(value: StripeError) -> Self {
-        if let StripeError::Stripe(request) = value {
-            Self::StripeRequest(request)
-        } else {
-            Self::Stripe(value)
-        }
+// impl From<StripeError> for MyError {
+//     fn from(value: StripeError) -> Self {
+//         if let StripeError::Stripe(request) = value {
+//             Self::StripeRequest(request)
+//         } else {
+//             Self::Stripe(value)
+//         }
+//     }
+// }
+
+impl From<reqwest::Error> for MyError {
+    fn from(value: reqwest::Error) -> Self {
+        Self::Reqwest(value)
     }
 }
