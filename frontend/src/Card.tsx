@@ -20,15 +20,16 @@ function PaymentForm(userAddress) {
     const [stripePromise, setStripePromise] = useState(null as Promise<Stripe | null> | null);
     const [fiatAmount, setFiatAmount] = useState(0);
     const [showPayment, setShowPayment] = useState(false);
+    const [showPaymentError, setShowPaymentError] = useState("");
     const userAccountRef = useRef(null);
     const fiatAmountRef = useRef<HTMLInputElement>(null);
     useEffect(() => {
         async function doIt() {
             const stripePubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text(); // TODO: Fetch it only once.
             const fiatAmount = fiatAmountRef.current?.value as unknown as number * 100; // FIXME
-            // TODO: If `fiat_amount` is too small, "no payment methods" error.
             const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`)).json(); // FIXME
             if (res.error) {
+                setShowPaymentError(res.error.message);
                 setShowPayment(false);
             } else {
                 const client_secret: string = res["client_secret"];
@@ -60,6 +61,7 @@ function PaymentForm(userAddress) {
                     <p><button>Invest</button></p>
                 </form>
             </Elements>}
+            {!showPayment && <p>{showPaymentError}</p>}
         </>
     );
 }
