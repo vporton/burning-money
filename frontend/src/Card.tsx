@@ -1,6 +1,6 @@
 import { Elements, PaymentElement } from "@stripe/react-stripe-js";
 import { loadStripe, Stripe } from "@stripe/stripe-js";
-import { useEffect, useRef, useState } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 import { backendUrlPrefix } from "../config";
 
 export default function Card() {
@@ -18,38 +18,49 @@ export default function Card() {
 function PaymentForm(userAddress) {
     const [options, setOptions] = useState(null as unknown as object);
     const [stripePromise, setStripePromise] = useState(null as Promise<Stripe | null> | null);
-    const userAccount = useRef(null);
+    const [fiatAmount, setFiatAmount] = useState(0);
+    const [showPayment, setShowPayment] = useState(false);
+    const userAccountRef = useRef(null);
+    const fiatAmountRef = useRef<HTMLInputElement>(null);
     useEffect(() => {
         async function doIt() {
-            const stripe_pubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text();
+            const stripePubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text(); // TODO: Fetch it only once.
+            const fiatAmount = fiatAmountRef.current?.value as unknown as number * 100; // FIXME
             // TODO: If `fiat_amount` is too small, "no payment methods" error.
-            const res = await (await fetch(backendUrlPrefix + "/create-payment-intent?fiat_amount=1099")).json(); // FIXME
-            const client_secret: string = res["client_secret"];
+            const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`)).json(); // FIXME
+            if (res.error) {
+                setShowPayment(false);
+            } else {
+                const client_secret: string = res["client_secret"];
+                const stripePromise_: Promise<Stripe | null> = loadStripe(stripePubkey);
 
-            const stripePromise_: Promise<Stripe | null> = loadStripe(stripe_pubkey);
-
-            setOptions({
-                clientSecret: client_secret,
-                appearance: {},
-            });
-            setStripePromise(stripePromise_);
+                setOptions({
+                    clientSecret: client_secret,
+                    appearance: {},
+                });
+                setStripePromise(stripePromise_);
+                setShowPayment(true);
+            }
         }
         doIt();
-    }, []);
+    }, [fiatAmount]);
 
     return (
-        <Elements stripe={stripePromise} options={options}>
-            <form>
-                <p>
-                    <label htmlFor="userAccount">Your crypto account:</label> {" "}
-                    <input type="text" id="userAccount" ref={userAccount}/> {" "}
-                    <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
-                    <input type="number" id="fiatAmount" ref={userAccount}/>
-                </p>
-                <PaymentElement />
-                <p><button>Submit</button></p>
-            </form>
-        </Elements>
+        <>
+            <p>
+                <label htmlFor="userAccount">Your crypto account:</label> {" "}
+                <input type="text" id="userAccount" ref={userAccountRef}/> {" "}
+                <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
+                <input type="number" id="fiatAmount" ref={fiatAmountRef}
+                    onChange={e => setFiatAmount(e.target.value as unknown as number)}/> {/* FIXME */}
+            </p>
+            {showPayment && <Elements stripe={stripePromise} options={options}>
+                <form>
+                    <PaymentElement />
+                    <p><button>Invest</button></p>
+                </form>
+            </Elements>}
+        </>
     );
 }
 
