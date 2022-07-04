@@ -1,5 +1,6 @@
-import { Elements, PaymentElement } from "@stripe/react-stripe-js";
-import { loadStripe, Stripe } from "@stripe/stripe-js";
+import stripeX from 'stripe';
+import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import { loadStripe, Stripe, StripeElements } from "@stripe/stripe-js";
 import { RefObject, useEffect, useRef, useState } from "react";
 import { backendUrlPrefix } from "../config";
 
@@ -23,6 +24,9 @@ function PaymentForm(userAddress) {
     const [showPaymentError, setShowPaymentError] = useState("");
     const userAccountRef = useRef(null);
     const fiatAmountRef = useRef<HTMLInputElement>(null);
+    const elementsRef = useRef(null);
+    const stripe = useStripe() as Stripe;
+    const elements = useElements() as StripeElements;
     useEffect(() => {
         async function doIt() {
             const stripePubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text(); // TODO: Fetch it only once.
@@ -46,6 +50,24 @@ function PaymentForm(userAddress) {
         doIt();
     }, [fiatAmount]);
 
+    async function submitHandler(event) {
+        event.preventDefault();
+      
+        const stripePubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text(); // TODO: Fetch it only once.
+        const stripe = require('stripe')(stripePubkey);
+        stripe.updatePaymentIntent({
+           elements, // elements instance
+           params: {
+             payment_method_data: {
+               billing_details: { }
+             },
+             shipping: { }
+           }
+        }).then(function (result) {
+          stripePaymentMethodHandler(result)
+        });
+    }
+
     return (
         <>
             <p>
@@ -55,8 +77,8 @@ function PaymentForm(userAddress) {
                 <input type="number" id="fiatAmount" ref={fiatAmountRef}
                     onChange={e => setFiatAmount(e.target.value as unknown as number)}/> {/* FIXME */}
             </p>
-            {showPayment && <Elements stripe={stripePromise} options={options}>
-                <form>
+            {showPayment && <Elements stripe={stripePromise} options={options} ref={elementsRef}>
+                <form onSubmit={submitHandler}>
                     <PaymentElement />
                     <p><button>Invest</button></p>
                 </form>
@@ -67,6 +89,10 @@ function PaymentForm(userAddress) {
 }
 
 
+
+function stripePaymentMethodHandler(result: any) {
+    throw new Error("Function not implemented.");
+}
 // async function initiatePayment() {
 //     const userAddress = document.getElementById('userAccount');
 //     await doInitiatePayment(userAddress);
