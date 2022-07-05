@@ -71,11 +71,12 @@ pub async fn create_payment_intent(q: web::Query<CreateStripeCheckout>, common: 
         .form(&params)
         .send().await?;
     // FIXME
-    Ok(HttpResponse::Ok().body(res.text().await?))
-    // #[derive(Deserialize, Serialize)]
-    // struct Data {
-    //     client_secret: String,
-    // }
-    // let data: Data = serde_json::from_slice(res.bytes().await?.as_ref())?;
-    // Ok(web::Json(data))
+    // Ok(HttpResponse::Ok().body(res.text().await?))
+    #[derive(Deserialize, Serialize)]
+    struct Data {
+        id: String,
+        client_secret: String,
+    }
+    let data: Data = serde_json::from_slice(res.bytes().await?.as_ref())?;
+    Ok(web::Json(data))
 }
