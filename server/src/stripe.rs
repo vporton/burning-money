@@ -70,6 +70,7 @@ pub async fn create_payment_intent(q: web::Query<CreateStripeCheckout>, common: 
         .header("Stripe-Version", "2020-08-27; server_side_confirmation_beta=v1")
         .form(&params)
         .send().await?;
+    // FIXME
     Ok(HttpResponse::Ok().body(res.text().await?))
     // #[derive(Deserialize, Serialize)]
     // struct Data {
