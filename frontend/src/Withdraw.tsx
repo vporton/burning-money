@@ -1,10 +1,11 @@
+import React from "react";
 // import { ethers } from 'hardhat';
 import { ethers } from 'ethers';
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css';
-import deployed from "../../dist/deployed-addresses.json";
+import deployed from "./deployed-addresses.json";
 import { CHAINS } from './data';
-import { abi as tokenAbi } from "../../artifacts/contracts/Token.sol/Token.json";
+import { abi as tokenAbi } from "./Token.json";
 import { useEffect, useState } from 'react';
 const { utils, BigNumber: BN } = ethers;
 

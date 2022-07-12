@@ -2,7 +2,7 @@ import stripeX from 'stripe';
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe, Stripe, StripeElements } from "@stripe/stripe-js";
 import { RefObject, useEffect, useRef, useState } from "react";
-import { backendUrlPrefix } from "../config";
+import { backendUrlPrefix } from "./config";
 import React from 'react';
 
 export default function Card() {
