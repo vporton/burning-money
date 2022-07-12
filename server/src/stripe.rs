@@ -54,6 +54,7 @@ pub async fn stripe_public_key(common: web::Data<Common>) -> impl Responder {
     HttpResponse::Ok().body(common.config.stripe.public_key.clone())
 }
 
+// FIXME: POST?
 #[get("/create-payment-intent")]
 pub async fn create_payment_intent(q: web::Query<CreateStripeCheckout>, common: web::Data<Common>) -> Result<impl Responder, MyError> {
     let client = reqwest::Client::builder()
