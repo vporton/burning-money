@@ -3,6 +3,7 @@ import Bid from './Bid';
 import Card from './Card';
 import Withdraw from './Withdraw';
 import "./App.css";
+import React from "react";
 
 function MyNavLink(props) {
     return (

@@ -11,6 +11,7 @@ import { Tab, TabList, TabPanel, Tabs } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import { backendUrlPrefix } from '../config';
 import Card from './Card';
+import React from 'react';
 const { utils, BigNumber: BN } = ethers;
 
 export default function Bid() {

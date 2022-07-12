@@ -83,7 +83,7 @@ var stripePaymentMethodHandler = function (result) {
             return res.json();
         }).then(function (paymentResponse) {
             // Handle server response (see Step 7)
-            handleServerResponse(paymentResponse);
+            // TODO: handleServerResponse(paymentResponse);
         });
     }
 };
