@@ -9,9 +9,7 @@
     "@stripe/react-stripe-js": "^1.9.0",
     "@stripe/stripe-js": "^1.32.0",
     "assert": "^2.0.0",
-    "browserify": "^17.0.0",
     "ethers": "^5.6.8",
-    "parcel": "^2.6.0",
     "react": "^18.1.0",
     "react-calendar": "^3.7.0",
     "react-dom": "^18.1.0",
@@ -22,6 +20,12 @@
     "typescript": "^4.7.3"
   },
   "scripts": {
-    "dev": "npx parcel index.html"
+    "watch": "webpack --config webpack.config.js --watch",
+    "build": "webpack --config webpack.config.js"
+  },
+  "devDependencies": {
+    "awesome-typescript-loader": "^5.2.1",
+    "webpack": "^5.73.0",
+    "webpack-cli": "^4.10.0"
   }
 }
