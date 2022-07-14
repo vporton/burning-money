@@ -29,6 +29,7 @@ function PaymentForm() {
     const fiatAmountRef = useRef<HTMLInputElement>(null);
     useEffect(() => {
         async function doIt() {
+            // TODO: Do it in browser, rather than on server?
             const stripePubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text(); // TODO: Fetch it only once.
             const fiatAmount = fiatAmountRef.current?.value as unknown as number * 100; // FIXME
             const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`)).json(); // FIXME
