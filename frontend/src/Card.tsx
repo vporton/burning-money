@@ -90,8 +90,7 @@ function PaymentFormContent(props: any) {
                 } = await (stripe as any).handleNextAction({
                     clientSecret: response.payment_intent_client_secret
                 });
-          
-          
+
                 if (errorAction) {
                     alert(errorAction); // FIXME
                 } else {
