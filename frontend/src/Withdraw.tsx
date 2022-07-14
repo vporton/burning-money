@@ -5,9 +5,10 @@ import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css';
 import deployed from "./deployed-addresses.json";
 import { CHAINS } from './data';
-import { abi as tokenAbi } from "./Token.json";
+import Token from "./Token.json";
 import { useEffect, useState } from 'react';
 const { utils, BigNumber: BN } = ethers;
+const tokenAbi = Token.abi;
 
 export default function Withdraw() {
     const maxDate = new Date();
@@ -21,14 +22,15 @@ export default function Withdraw() {
         (window as any).ethereum.enable().then(async () => {
             const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
             const { chainId } = await provider.getNetwork();
+            const addrs = (deployed as any)[CHAINS[chainId]];
             const day = Math.floor(date.getTime() / 1000 / (24*3600));
-            const token = new ethers.Contract(deployed[CHAINS[chainId]].Token, tokenAbi);
+            const token = new ethers.Contract(addrs.Token, tokenAbi);
             const totalBid = await token.connect(provider.getSigner(0)).totalBids(BN.from(day));
             if(totalBid.eq(BN.from(0))) {
                 setAmount(0);
             } else {
-                token.connect(provider.getSigner(0)).withdrawalAmount(day).then(amount => {
-                    setAmount(amount);
+                token.connect(provider.getSigner(0)).withdrawalAmount(day).then((amount: string) => {
+                    setAmount(amount as unknown as number); // FIXME: correct?
                 });
             }
         });
@@ -39,11 +41,12 @@ export default function Withdraw() {
         await (window as any).ethereum.enable();
         const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
         const { chainId } = await provider.getNetwork();
-        if(!CHAINS[chainId] || !deployed[CHAINS[chainId]]) {
+        const addrs = (deployed as any)[CHAINS[chainId]];
+        if(!CHAINS[chainId] || CHAINS[chainId] !in deployed) {
             alert("This chain is not supported"); // TODO
             return;
         }
-        const token = new ethers.Contract(deployed[CHAINS[chainId]].Token, tokenAbi);
+        const token = new ethers.Contract(addrs.Token, tokenAbi);
         const day = Math.floor(Number(date) / (24*3600))
         await token.connect(provider.getSigner(0)).withdraw(day, await provider.getSigner(0).getAddress(), {
             gasLimit: '200000',

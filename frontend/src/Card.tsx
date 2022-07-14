@@ -1,6 +1,6 @@
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe, Stripe, StripeElements } from "@stripe/stripe-js";
-import { RefObject, useEffect, useRef, useState } from "react";
+import { FormEvent, RefObject, useEffect, useRef, useState } from "react";
 import { backendUrlPrefix } from "./config";
 import React from 'react';
 
@@ -67,7 +67,7 @@ function PaymentForm() {
     );
 }
 
-var stripePaymentMethodHandler = function (result) {
+var stripePaymentMethodHandler = function (result: any) {
     if (result.error) {
         // TODO: Show error in payment form
     } else {
@@ -87,17 +87,17 @@ var stripePaymentMethodHandler = function (result) {
     }
 };
   
-function PaymentFormContent(props) {
+function PaymentFormContent(props: any) {
     const stripe = useStripe() as Stripe;
     const elements = useElements() as StripeElements;
 
-    async function submitHandler(event) {
+    async function submitHandler(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
       
         const stripePubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text(); // TODO: Fetch it only once.
-        const stripe = require('stripe')(stripePubkey);
-        // const stripe = (await loadStripe(stripePubkey)) as Stripe;
-        const pi = await stripe.paymentIntents.retrieve(props.paymentIntentId);
+        // const stripe = require('stripe')(stripePubkey);
+        const stripe = (await loadStripe(stripePubkey)) as Stripe;
+        const pi = await (stripe as any).paymentIntents.retrieve(props.paymentIntentId);
         alert(pi)
         pi.updatePaymentIntent({
            elements,
@@ -107,15 +107,14 @@ function PaymentFormContent(props) {
              },
              shipping: { }
            }
-        }).then(function (result) {
-            alert(111)
+        }).then(function (result: any) {
           stripePaymentMethodHandler(result)
         });
         alert(222)
     }
 
     return (
-        <form onSubmit={submitHandler}>
+        <form onSubmit={e => submitHandler(e)}> {/* FIXME: async */}
             <PaymentElement />
             <p><button>Invest</button></p>
         </form>

@@ -1,4 +1,4 @@
-export const CHAINS = {
+export const CHAINS: { [name: string]: string } = {
     '1': 'mainnet',
     '3': 'ropsten',
     '4': 'rinkeby',

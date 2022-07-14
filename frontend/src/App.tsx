@@ -4,9 +4,9 @@ import Bid from './Bid';
 import Card from './Card';
 import Withdraw from './Withdraw';
 import "./App.css";
-import React from "react";
+import React, { ReactNode } from "react";
 
-function MyNavLink(props) {
+function MyNavLink(props: {to: string, children: ReactNode}) {
     return (
         // TODO: className instead.
         // FIXME: isActive does not work as expected.

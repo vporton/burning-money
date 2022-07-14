@@ -4,8 +4,8 @@ import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css';
 import deployed from "./deployed-addresses.json";
 import { CHAINS } from './data';
-import { abi as tokenAbi } from "./Token.json";
-import { abi as erc20Abi } from "@openzeppelin/contracts/build/contracts/ERC20.json";
+import Token from "./Token.json";
+import ERC20 from "@openzeppelin/contracts/build/contracts/ERC20.json";
 import { useEffect, useState } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
@@ -13,6 +13,8 @@ import { backendUrlPrefix } from './config';
 import Card from './Card';
 import React from 'react';
 const { utils, BigNumber: BN } = ethers;
+const tokenAbi = Token.abi;
+const erc20Abi = ERC20.abi;
 
 export default function Bid() {
     const minDate = new Date();
@@ -33,12 +35,13 @@ export default function Bid() {
         await (window as any).ethereum.enable();
         const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
         const { chainId } = await provider.getNetwork();
-        if(!CHAINS[chainId] || !deployed[CHAINS[chainId]]) {
+        if(!CHAINS[chainId] || CHAINS[chainId] !in deployed) {
             alert("This chain is not supported"); // TODO
             return;
         }
-        const token = new ethers.Contract(deployed[CHAINS[chainId]].Token, tokenAbi);
-        const collateral = new ethers.Contract(deployed[CHAINS[chainId]].collateral, erc20Abi);
+        const addrs = (deployed as any)[CHAINS[chainId]];
+        const token = new ethers.Contract(addrs.Token, tokenAbi);
+        const collateral = new ethers.Contract(addrs.collateral, erc20Abi);
         const day = Math.floor(date.getTime() / 1000 / (24*3600));
         // const estimation = await token.estimateGas.bidOn(day, utils.parseEther(bidAmount)); // TODO
         const allowance = await collateral.connect(provider.getSigner(0)).allowance(await (await provider.getSigner(0)).getAddress(), token.address);
