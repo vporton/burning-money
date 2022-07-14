@@ -1,5 +1,5 @@
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
-import { loadStripe, Stripe, StripeElements } from "@stripe/stripe-js";
+import { loadStripe, PaymentIntent, Stripe, StripeElements } from "@stripe/stripe-js";
 import { FormEvent, RefObject, useEffect, useRef, useState } from "react";
 import { backendUrlPrefix } from "./config";
 import React from 'react';
@@ -15,6 +15,8 @@ export default function Card() {
         <PaymentForm/>
     </>
 }
+
+// https://stripe.com/docs/payments/finalize-payments-on-the-server
 
 function PaymentForm() {
     const [options, setOptions] = useState(null as unknown as object);
@@ -36,7 +38,10 @@ function PaymentForm() {
             } else {
                 const clientSecret: string = res["client_secret"];
                 const paymentIntentId: string = res["id"];
-                const stripePromise_: Promise<Stripe | null> = loadStripe(stripePubkey);
+                const stripePromise_: Promise<Stripe | null> = loadStripe(stripePubkey, {
+                  betas: ['server_side_confirmation_beta_1'],
+                  apiVersion: '2020-08-27;server_side_confirmation_beta=v1',
+                });
 
                 setOptions({
                     clientSecret,
@@ -67,26 +72,6 @@ function PaymentForm() {
     );
 }
 
-var stripePaymentMethodHandler = function (result: any) {
-    if (result.error) {
-        // TODO: Show error in payment form
-    } else {
-      // Otherwise send paymentIntent.id to your server
-        fetch('/confirmPayment', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-              payment_intent_id: result.paymentIntent.id,
-            })
-        }).then(function (res) {
-            return res.json();
-        }).then(function (paymentResponse) {
-            // Handle server response (see Step 7)
-            // TODO: handleServerResponse(paymentResponse);
-        });
-    }
-};
-  
 function PaymentFormContent(props: any) {
     const stripe = useStripe() as Stripe;
     const elements = useElements() as StripeElements;
@@ -94,23 +79,59 @@ function PaymentFormContent(props: any) {
     async function submitHandler(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
       
-        const stripePubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text(); // TODO: Fetch it only once.
-        // const stripe = require('stripe')(stripePubkey);
-        const stripe = (await loadStripe(stripePubkey)) as Stripe;
-        const pi = await (stripe as any).paymentIntents.retrieve(props.paymentIntentId);
-        alert(pi)
-        pi.updatePaymentIntent({
-           elements,
-           params: {
-             payment_method_data: {
-               billing_details: { }
-             },
-             shipping: { }
-           }
+        const handleServerResponse = async (response: any) => {
+            if (response.error) {
+              alert(response.error); // FIXME
+            } else if (response.requires_action) {
+              // Use Stripe.js to handle the required next action
+                const {
+                    error: errorAction,
+                    paymentIntent
+                } = await (stripe as any).handleNextAction({
+                    clientSecret: response.payment_intent_client_secret
+                });
+          
+          
+                if (errorAction) {
+                    alert(errorAction); // FIXME
+                } else {
+                    alert("Success."); // FIXME
+                }
+            } else {
+                alert("You've paid."); // FIXME
+            }
+          }
+        
+        const stripePaymentMethodHandler = function (result: any) {
+            if (result.error) {
+                alert(result.error); // FIXME
+            } else {
+                // Otherwise send paymentIntent.id to your server
+                fetch('/confirmPayment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        payment_intent_id: result.paymentIntent.id,
+                    })
+                }).then(function (res) {
+                    return res.json();
+                }).then(function (paymentResponse) {
+                    handleServerResponse(paymentResponse);
+                });
+            }
+        };
+          
+        (stripe as any).updatePaymentIntent({
+            elements, // elements instance
+            params: {
+            //   payment_method_data: {
+            //     billing_details: { ... }
+            //   },
+            //   shipping: { ... }
+            }
         }).then(function (result: any) {
-          stripePaymentMethodHandler(result)
+           stripePaymentMethodHandler(result)
         });
-        alert(222)
     }
 
     return (
