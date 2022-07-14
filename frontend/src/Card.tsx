@@ -120,7 +120,7 @@ function PaymentFormContent(props: any) {
                 });
             }
         };
-          
+
         (stripe as any).updatePaymentIntent({
             elements, // elements instance
             params: {
