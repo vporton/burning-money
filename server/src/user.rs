@@ -1,5 +1,5 @@
 use actix_identity::Identity;
-use actix_web::{get, HttpMessage, HttpRequest, Responder, web};
+use actix_web::{get, post, HttpMessage, HttpRequest, Responder, web};
 use diesel::{ExpressionMethods, insert_into, QueryDsl, RunQueryDsl};
 use serde::{Deserialize, Serialize};
 use crate::{Common, MyError};
@@ -33,7 +33,7 @@ struct User {
     password: String,
 }
 
-#[get("/register")]
+#[post("/register")]
 pub async fn user_register(request: HttpRequest, info: web::Json<User>, common: web::Data<Common>)
     -> Result<impl Responder, MyError>
 {
@@ -61,8 +61,8 @@ struct Login {
     password: String,
 }
 
-#[get("/login")]
-pub async fn user_login(request: HttpRequest, info: web::Json<Login>, common: web::Data<Common>) -> Result<impl Responder, MyError> {
+#[post("/login")]
+pub async fn user_login(request: HttpRequest, info: web::Form<Login>, common: web::Data<Common>) -> Result<impl Responder, MyError> {
     use crate::schema::users::dsl::*;
     let (v_id, v_password) = users
         .filter(email.eq(info.email.clone()))

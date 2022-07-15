@@ -1,12 +1,13 @@
 use std::fmt::{Display, Formatter};
 use std::io;
 use actix_web::http::StatusCode;
-use actix_web::{HttpResponse, ResponseError};
+use actix_web::{HttpResponse, ResponseError, web};
 use actix_web::http::header::ContentType;
 use askama::Template;
 use ethers_core::abi::AbiError;
 use lambda_web::LambdaError;
 // use stripe::{RequestError, StripeError};
+use serde::Serialize;
 
 #[derive(Debug)]
 pub struct CannotLoadOrGenerateEthereumKeyError(String);
@@ -58,6 +59,11 @@ pub enum MyError {
     Anyhow(anyhow::Error),
 }
 
+#[derive(Serialize)]
+struct MyErrorJson {
+    error: String,
+}
+
 impl MyError {
     fn html(&self) -> String {
         match self {
@@ -70,6 +76,15 @@ impl MyError {
                 ErrorInternal {
                     text: err.to_string().as_str(),
                 }.render().unwrap()
+            }
+        }
+    }
+    fn json(&self) -> MyErrorJson {
+        match self {
+            err => { // may indicate wrong UTF-8 encoding
+                MyErrorJson {
+                    error: err.to_string(),
+                }
             }
         }
     }
@@ -103,13 +118,14 @@ impl Display for MyError {
 impl ResponseError for MyError {
     fn status_code(&self) -> StatusCode {
         match self {
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::AuthenticationFailed(_) => StatusCode::UNAUTHORIZED,
+            _ => StatusCode::INTERNAL_SERVER_ERROR, // TODO
         }
     }
     fn error_response(&self) -> HttpResponse {
         HttpResponse::build(self.status_code())
-            .insert_header(ContentType::html())
-            .body(self.html())
+            .insert_header(ContentType::json())
+            .body(serde_json::to_string(&self.json()).unwrap())
     }
 }
 

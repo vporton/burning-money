@@ -107,9 +107,9 @@ async fn main() -> Result<(), MyError> {
             .allowed_origin(&config2.frontend_url_prefix);
         let mother_hash = Key::from(config2.secrets.mother_hash.clone().as_bytes());
         App::new()
+            // .wrap(IdentityMiddleware::default())
+            // .wrap(SessionMiddleware::new(CookieSessionStore::default(), mother_hash))
             .wrap(cors)
-            .wrap(IdentityMiddleware::default())
-            .wrap(SessionMiddleware::new(CookieSessionStore::default(), mother_hash))
             // .app_data(Data::new(config2.clone()))
             .app_data(Data::new(common.clone()))
             .service(user_identity)
