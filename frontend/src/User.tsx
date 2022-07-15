@@ -11,6 +11,7 @@ export function Login() {
             method: "POST",
             headers: {'content-type': 'application/x-www-form-urlencoded'},
             body: new URLSearchParams({ email, password }),
+            credentials: 'include',
         })
             .then(async res => res.status === 200 ? alert("Logged in. Please, reload the page.") : alert((await res.json()).error)); // TODO
     }
@@ -33,6 +34,7 @@ export function Register() {
             method: "POST",
             headers: {'content-type': 'application/x-www-form-urlencoded'},
             body: new URLSearchParams({email, password, first_name: firstName, last_name: lastName}),
+            credentials: 'include',
         })
             .then(async res => res.status === 200 ? alert("Logged in. Please, reload the page.") : alert((await res.json()).error)); // TODO
     }

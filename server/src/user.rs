@@ -1,5 +1,5 @@
 use actix_identity::Identity;
-use actix_web::{get, post, HttpMessage, HttpRequest, Responder, web};
+use actix_web::{get, post, HttpMessage, HttpRequest, Responder, web, HttpResponse};
 use diesel::{ExpressionMethods, insert_into, QueryDsl, RunQueryDsl};
 use serde::{Deserialize, Serialize};
 use crate::{Common, MyError};
@@ -73,4 +73,10 @@ pub async fn user_login(request: HttpRequest, info: web::Form<Login>, common: we
     }
     Identity::login(&request.extensions(), format!("{}", v_id))?;
     Ok(web::Json(""))
+}
+
+#[post("/logout")]
+pub async fn user_logout(user: Identity) -> impl Responder {
+    user.logout();
+    HttpResponse::Ok()
 }

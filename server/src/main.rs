@@ -104,17 +104,21 @@ async fn main() -> Result<(), MyError> {
 
     let factory = move || {
         let cors = Cors::default() // Construct CORS middleware builder
-            .allowed_origin(&config2.frontend_url_prefix);
+            .allowed_origin(&config2.frontend_url_prefix)
+            .supports_credentials();
         let mother_hash = Key::from(config2.secrets.mother_hash.clone().as_bytes());
         App::new()
             .wrap(IdentityMiddleware::default())
-            .wrap(SessionMiddleware::new(CookieSessionStore::default(), mother_hash))
+            .wrap(SessionMiddleware::builder(CookieSessionStore::default(), mother_hash)
+                  .cookie_secure(false) // TODO: only when testing
+                  .build())
             .wrap(cors)
             // .app_data(Data::new(config2.clone()))
             .app_data(Data::new(common.clone()))
             .service(user_identity)
             .service(user_register)
             .service(user_login)
+            .service(user_logout)
             .service(about_us)
             .service(stripe_public_key)
             .service(create_payment_intent)

@@ -7,13 +7,21 @@ import { NavLink } from "react-router-dom";
 
 export default function Card() {
     const [user, setUser] = useState<string | null>(null);
-    fetch(backendUrlPrefix + "/identity")
+    fetch(backendUrlPrefix + "/identity", {credentials: 'include'})
         .then(u => u.json())
         .then(u => {
             setUser(u.id);
+        });
+    function logout() { // FIXME: It doesn't work.
+        window.fetch(backendUrlPrefix + "/logout", {
+            method: "POST",
+            credentials: 'include',
         })
+            .then(() => setUser(null)); // TODO: Handle errors.
+    }
+
     return <>
-        {user === null ? <><NavLink to={'/login'}>Login</NavLink> <NavLink to={'/register'}>Register</NavLink></> : <a href='TODO'>Logout</a>}
+        {user === null ? <><NavLink to={'/login'}>Login</NavLink> <NavLink to={'/register'}>Register</NavLink></> : <a href='#' onClick={logout}>Logout</a>}
         <p>You mine CardToken by using a credit card or a bank account (unlike Bitcoin that is mined by costly equipment).</p>
         <p>To mine an amount of CardToken corresponding to a certain amount of money, pay any amount of money
             to your account 

@@ -30,6 +30,7 @@ ethkey = "*"  # TODO
 #async-stripe = { version = "0.15.0", features = ["runtime-tokio-hyper"] }
 reqwest = "0.11.11"
 actix-cors = "0.6.1"
-actix-session = { version = "0.6.2", features = ["cookie-session"] }
+actix-session = { version = "0.7.0", features = ["cookie-session"] }
 actix-identity = "0.5.1"
 anyhow = "1.0.58"
+log = "0.4.17"
