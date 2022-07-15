@@ -12,8 +12,7 @@ export function Login() {
             headers: {'content-type': 'application/x-www-form-urlencoded'},
             body: new URLSearchParams({ email, password }),
         })
-            .catch(e => alert(e.error));
-        alert("Logged in. Please, reload the page.");
+            .then(async res => res.status === 200 ? alert("Logged in. Please, reload the page.") : alert((await res.json()).error)); // TODO
     }
     return (
         <>
@@ -30,17 +29,16 @@ export function Register() {
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     async function do_register() {
-        await window.fetch(backendUrlPrefix + "/login", {
+        await window.fetch(backendUrlPrefix + "/register", {
             method: "POST",
             headers: {'content-type': 'application/x-www-form-urlencoded'},
-            body: JSON.stringify({email, password, first_name: firstName, last_name: lastName}),
+            body: new URLSearchParams({email, password, first_name: firstName, last_name: lastName}),
         })
-            .catch(e => alert(e));
-        alert("Registered. Please, reload the page.");
+            .then(async res => res.status === 200 ? alert("Logged in. Please, reload the page.") : alert((await res.json()).error)); // TODO
     }
     return (
         <>
-            <p>Login: <input onChange={e => setEmail(e.target.value)}/></p>
+            <p>Email: <input onChange={e => setEmail(e.target.value)}/></p>
             <p>Password: <input onChange={e => setPassword(e.target.value)} type="password"/></p>
             <p>First name: <input onChange={e => setFirstName(e.target.value)}/></p>
             <p>Last name: <input onChange={e => setLastName(e.target.value)}/></p>

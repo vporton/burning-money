@@ -34,7 +34,7 @@ struct User {
 }
 
 #[post("/register")]
-pub async fn user_register(request: HttpRequest, info: web::Json<User>, common: web::Data<Common>)
+pub async fn user_register(request: HttpRequest, info: web::Form<User>, common: web::Data<Common>)
     -> Result<impl Responder, MyError>
 {
     // FIXME: Check email.
