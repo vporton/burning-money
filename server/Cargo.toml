@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "4.0.1"
+actix-web = { version = "4.0.1", features = ["cookies"] }
 diesel = { version = "1.4.8", features = ["postgres"] }
 askama = { version = "0.11.1", features = ["with-actix-web"] }
 askama_actix = "0.13.0"
@@ -30,3 +30,5 @@ ethkey = "*"  # TODO
 #async-stripe = { version = "0.15.0", features = ["runtime-tokio-hyper"] }
 reqwest = "0.11.11"
 actix-cors = "0.6.1"
+actix-session = { version = "0.6.2", features = ["cookie-session"] }
+actix-identity = "0.5.1"

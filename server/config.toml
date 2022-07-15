@@ -4,7 +4,8 @@ url_prefix = "http://localhost"
 frontend_url_prefix = "http://localhost:3000"
 
 [secrets]
-ethereum_key_file = "supersecret.priv"
+mother_hash = "Yeimawi2chohdeis1chiGhoochap?ooD8aeghee2tie(diN6ieB&aeng8eiRei_z"  # 64 bytes
+ethereum_key_file = "ethereum.priv"
 ethereum_password = "ooP2Aigodee8OoM3"
 
 [database]

@@ -1,11 +1,15 @@
 #[macro_use] extern crate diesel;
 extern crate core;
 
+use std::convert::identity;
 use serde_derive::Deserialize;
 use std::fs;
 use std::sync::Arc;
 use actix_cors::Cors;
+use actix_identity::IdentityMiddleware;
+use actix_session::{SessionMiddleware, storage::CookieSessionStore};
 use actix_web::{App, HttpServer, web};
+use actix_web::cookie::Key;
 use actix_web::web::Data;
 use env_logger::TimestampPrecision;
 use clap::Parser;
@@ -14,7 +18,7 @@ use lambda_web::{is_running_on_lambda, run_actix_on_lambda};
 use errors::CannotLoadOrGenerateEthereumKeyError;
 use crate::errors::MyError;
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
-use crate::pages::{about_us, not_found};
+use crate::pages::{about_us, not_found, user_identity};
 use crate::stripe::{create_payment_intent, stripe_public_key};
 
 mod our_db_pool;
@@ -38,6 +42,7 @@ pub struct Config {
 
 #[derive(Clone, Deserialize)]
 pub struct SecretsConfig {
+    mother_hash: String,
     ethereum_key_file: String,
     ethereum_password: String,
 }
@@ -98,10 +103,14 @@ async fn main() -> Result<(), MyError> {
     let factory = move || {
         let cors = Cors::default() // Construct CORS middleware builder
             .allowed_origin(&config2.frontend_url_prefix);
+        let mother_hash = Key::from(config2.secrets.mother_hash.clone().as_bytes());
         App::new()
             .wrap(cors)
+            .wrap(IdentityMiddleware::default())
+            .wrap(SessionMiddleware::new(CookieSessionStore::default(), mother_hash))
             // .app_data(Data::new(config2.clone()))
             .app_data(Data::new(common.clone()))
+            .service(user_identity)
             .service(about_us)
             .service(stripe_public_key)
             .service(create_payment_intent)
