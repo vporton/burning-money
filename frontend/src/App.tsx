@@ -5,6 +5,7 @@ import Card from './Card';
 import Withdraw from './Withdraw';
 import "./App.css";
 import React, { ReactNode } from "react";
+import { Login, Register } from './User';
 
 function MyNavLink(props: {to: string, children: ReactNode}) {
     return (
@@ -28,6 +29,8 @@ export function App() {
                 <Routes>
                     <Route path="/bid" element={<Bid/>} />
                     <Route path="/withdraw" element={<Withdraw/>} />
+                    <Route path="/register" element={<Register/>} />
+                    <Route path="/login" element={<Login/>} />
                 </Routes>
             </BrowserRouter>
         </div>

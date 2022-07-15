@@ -31,21 +31,3 @@ pub async fn not_found() -> actix_web::Result<HttpResponse> {
         .content_type("text/html; charset=utf-8")
         .body(body))
 }
-
-#[get("/identity")]
-pub async fn user_identity(user: Option<Identity>) -> impl Responder {
-    #[derive(Serialize)]
-    struct MyIdentity {
-        id: Option<String>,
-    }
-    let result = if let Some(user) = user {
-        MyIdentity {
-            id: Some(user.id().unwrap()),
-        }
-    } else {
-        MyIdentity {
-            id: None
-        }
-    };
-    web::Json(result)
-}

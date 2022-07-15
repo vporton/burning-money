@@ -3,6 +3,7 @@ import { loadStripe, PaymentIntent, Stripe, StripeElements } from "@stripe/strip
 import { FormEvent, RefObject, useEffect, useRef, useState } from "react";
 import { backendUrlPrefix } from "./config";
 import React from 'react';
+import { NavLink } from "react-router-dom";
 
 export default function Card() {
     const [user, setUser] = useState<string | null>(null);
@@ -12,7 +13,7 @@ export default function Card() {
             setUser(u.id);
         })
     return <>
-        {user === null ? <><a href='#'>Login</a> <a href='#'>Register</a></> : <a href='TODO'>Logout</a>}
+        {user === null ? <><NavLink to={'/login'}>Login</NavLink> <NavLink to={'/register'}>Register</NavLink></> : <a href='TODO'>Logout</a>}
         <p>You mine CardToken by using a credit card or a bank account (unlike Bitcoin that is mined by costly equipment).</p>
         <p>To mine an amount of CardToken corresponding to a certain amount of money, pay any amount of money
             to your account 

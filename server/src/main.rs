@@ -18,13 +18,15 @@ use lambda_web::{is_running_on_lambda, run_actix_on_lambda};
 use errors::CannotLoadOrGenerateEthereumKeyError;
 use crate::errors::MyError;
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
-use crate::pages::{about_us, not_found, user_identity};
+use crate::pages::{about_us, not_found};
 use crate::stripe::{create_payment_intent, stripe_public_key};
+use crate::user::{user_identity, user_login, user_register};
 
 mod our_db_pool;
 mod pages;
 mod errors;
 mod stripe;
+mod user;
 mod schema;
 
 static APP_USER_AGENT: &str = "CardToken seller";
@@ -111,6 +113,8 @@ async fn main() -> Result<(), MyError> {
             // .app_data(Data::new(config2.clone()))
             .app_data(Data::new(common.clone()))
             .service(user_identity)
+            .service(user_register)
+            .service(user_login)
             .service(about_us)
             .service(stripe_public_key)
             .service(create_payment_intent)

@@ -10,10 +10,11 @@ table! {
 
 table! {
     users (id) {
-        id -> Int4,
+        id -> Int8,
         first_name -> Text,
         last_name -> Text,
         email -> Text,
+        password -> Text,
         created_at -> Timestamp,
     }
 }

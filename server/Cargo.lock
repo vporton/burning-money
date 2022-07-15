@@ -2612,6 +2612,7 @@ dependencies = [
  "actix-identity",
  "actix-session 0.6.2",
  "actix-web",
+ "anyhow",
  "askama",
  "askama_actix",
  "clap",

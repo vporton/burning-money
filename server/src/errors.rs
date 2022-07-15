@@ -24,6 +24,21 @@ impl Display for CannotLoadOrGenerateEthereumKeyError {
 }
 
 #[derive(Debug)]
+pub struct AuthenticationFailedError;
+
+impl AuthenticationFailedError {
+    pub fn new() -> Self {
+        Self { }
+    }
+}
+
+impl Display for AuthenticationFailedError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Wrong password.")
+    }
+}
+
+#[derive(Debug)]
 pub enum MyError {
     Template(askama::Error),
     IO(io::Error),
@@ -39,6 +54,8 @@ pub enum MyError {
     // StripeRequest(RequestError),
     Reqwest(reqwest::Error),
     Json(serde_json::Error),
+    AuthenticationFailed(AuthenticationFailedError),
+    Anyhow(anyhow::Error),
 }
 
 impl MyError {
@@ -77,6 +94,8 @@ impl Display for MyError {
             // Self::StripeRequest(err) => write!(f, "Stripe request error: {err}"),
             Self::Reqwest(err) => write!(f, "Request error: {err}"),
             Self::Json(err) => write!(f, "JSON error: {err}"),
+            Self::AuthenticationFailed(err) => write!(f, "Authentication failed."),
+            Self::Anyhow(err) => write!(f, "Error: {}", err),
         }
     }
 }
@@ -173,5 +192,17 @@ impl From<reqwest::Error> for MyError {
 impl From<serde_json::Error> for MyError {
     fn from(value: serde_json::Error) -> Self {
         Self::Json(value)
+    }
+}
+
+impl From<AuthenticationFailedError> for MyError {
+    fn from(value: AuthenticationFailedError) -> Self {
+        Self::AuthenticationFailed(value)
+    }
+}
+
+impl From<anyhow::Error> for MyError {
+    fn from(value: anyhow::Error) -> Self {
+        Self::Anyhow(value)
     }
 }
