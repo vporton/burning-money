@@ -10,7 +10,6 @@ export function Login() {
         await window.fetch(backendUrlPrefix + "/login", {
             method: "POST",
             headers: {'content-type': 'application/x-www-form-urlencoded'},
-            // mode: 'cors',
             body: new URLSearchParams({ email, password }),
         })
             .catch(e => alert(e.error));
@@ -33,7 +32,7 @@ export function Register() {
     async function do_register() {
         await window.fetch(backendUrlPrefix + "/login", {
             method: "POST",
-            headers: {'content-type': 'application/json'},
+            headers: {'content-type': 'application/x-www-form-urlencoded'},
             body: JSON.stringify({email, password, first_name: firstName, last_name: lastName}),
         })
             .catch(e => alert(e));
