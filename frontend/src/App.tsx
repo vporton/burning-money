@@ -18,7 +18,7 @@ function MyNavLink(props: {to: string, children: ReactNode}) {
 
 export function App() {
     return (
-        <>
+        <div style={{padding: '5px'}}>
             <h1>Bid CardToken</h1>
             <BrowserRouter>
                 <nav className="mainNav">
@@ -30,6 +30,6 @@ export function App() {
                     <Route path="/withdraw" element={<Withdraw/>} />
                 </Routes>
             </BrowserRouter>
-        </>
+        </div>
     );
 }   
