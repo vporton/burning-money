@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use actix_web::{Responder, get, HttpResponse, web};
+use actix_web::{Responder, get, post, HttpResponse, web};
 use actix_web::http::header::LOCATION;
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
@@ -54,8 +54,7 @@ pub async fn stripe_public_key(common: web::Data<Common>) -> impl Responder {
     HttpResponse::Ok().body(common.config.stripe.public_key.clone())
 }
 
-// FIXME: POST?
-#[get("/create-payment-intent")]
+#[post("/create-payment-intent")]
 pub async fn create_payment_intent(q: web::Query<CreateStripeCheckout>, common: web::Data<Common>) -> Result<impl Responder, MyError> {
     let client = reqwest::Client::builder()
         .user_agent(crate::APP_USER_AGENT)
