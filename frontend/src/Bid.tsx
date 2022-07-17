@@ -79,7 +79,7 @@ export default function Bid() {
                     <p><button onClick={bid} disabled={!bidButtonActive}>Bid</button></p>
                 </TabPanel>
                 <TabPanel>
-                    <Card/>
+                    <Card bidDate={date}/>
                 </TabPanel>
             </Tabs>
         </>

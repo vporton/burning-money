@@ -5,7 +5,7 @@ import { backendUrlPrefix } from "./config";
 import React from 'react';
 import { NavLink } from "react-router-dom";
 
-export default function Card() {
+export default function Card(props: { bidDate: Date }) {
     const [user, setUser] = useState<string | null>(null);
     fetch(backendUrlPrefix + "/identity", {credentials: 'include'})
         .then(u => u.json())
@@ -24,13 +24,13 @@ export default function Card() {
         {user === null ? <><NavLink to={'/login'}>Login</NavLink> <NavLink to={'/register'}>Register</NavLink></> : <a href='#' onClick={logout}>Logout</a>}
         <p>You mine CardToken by using a credit card or a bank account (unlike Bitcoin that is mined by costly equipment).</p>
         <p>To mine an amount of CardToken corresponding to a certain amount of money, pay any amount of money.</p>
-        {user !== null ? <PaymentForm/> : ""}
+        {user !== null ? <PaymentForm bidDate={props.bidDate}/> : ""}
     </>
 }
 
 // https://stripe.com/docs/payments/finalize-payments-on-the-server
 
-function PaymentForm() {
+function PaymentForm(props: { bidDate: Date }) {
     const [options, setOptions] = useState(null as unknown as object);
     const [stripePromise, setStripePromise] = useState(null as Promise<Stripe | null> | null);
     const [fiatAmount, setFiatAmount] = useState(0);
@@ -79,14 +79,14 @@ function PaymentForm() {
                     onChange={e => setFiatAmount(e.target.value as unknown as number)}/> {/* FIXME */}
             </p>
             {showPayment && <Elements stripe={stripePromise} options={options}>
-                <PaymentFormContent paymentIntentId={paymentIntentId} userAccount={userAccount}/>
+                <PaymentFormContent paymentIntentId={paymentIntentId} userAccount={userAccount} bidDate={props.bidDate}/>
             </Elements>}
             {!showPayment && <p>{showPaymentError}</p>}
         </>
     );
 }
 
-function PaymentFormContent(props: any) {
+function PaymentFormContent(props: any) { // TODO: `any`
     const stripe = useStripe() as Stripe;
     const elements = useElements() as StripeElements;
 
@@ -126,6 +126,7 @@ function PaymentFormContent(props: any) {
                     body: JSON.stringify({
                         payment_intent_id: result.paymentIntent.id,
                         crypto_account: props.userAccount,
+                        bid_date: props.bidDate.toISOString(),
                     })
                 }).then(function (res) {
                     return res.json();

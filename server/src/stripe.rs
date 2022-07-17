@@ -1,10 +1,15 @@
+use ethcontract::transaction::Account;
+use std::time::Duration;
+use web3::api::Web3;
+use web3::types::*;
 use std::collections::HashMap;
 use actix_web::{Responder, get, post, HttpResponse, web};
 use actix_web::http::header::LOCATION;
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use crate::{Common, MyError};
+use web3::transports::Http;
+use crate::{Common, MyError, stripe};
 
 // We follow https://stripe.com/docs/payments/finalize-payments-on-the-server
 
@@ -80,12 +85,6 @@ pub async fn create_payment_intent(q: web::Query<CreateStripeCheckout>, common: 
     Ok(web::Json(data))
 }
 
-#[derive(Deserialize)]
-struct ConfirmPaymentForm {
-    payment_intent_id: String,
-    crypto_account: String,
-}
-
 async fn finalize_payment(payment_intent_id: &str, common: &Common) -> Result<(), MyError> {
     let client = reqwest::Client::builder()
         .user_agent(crate::APP_USER_AGENT)
@@ -97,9 +96,89 @@ async fn finalize_payment(payment_intent_id: &str, common: &Common) -> Result<()
     Ok(())
 }
 
+ethcontract::contract!("../artifacts/contracts/Token.sol/Token.json");
+ethcontract::contract!("../artifacts/@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json");
+
+async fn do_exchange(common: Common, crypto_account: String, bid_date: String, fiat_amount: i64) -> Result<(), MyError> {
+    // TODO
+    let ethereum_key = &**common.ethereum_key;
+    // let account = Account::Locked(ethereum_key, common.config.secrets.ethereum_password.into(), None);
+
+    let transport = Http::new(common.config.ethereum_endpoint);
+    let web3 = Web3::new(transport);
+
+    let price_oracle = AggregatorV3Interface::at(web3, common.config.oracle_address).await?;
+
+    let decimals = price_oracle
+        .decimals()
+        .from(ethereum_key)
+        .execute()
+        .await?;
+    let (
+        roundId,
+        answer,
+        startedAt,
+        updatedAt,
+        answeredInRound
+    ) = price_oracle
+        .latestRoundData()
+        .from(ethereum_key)
+        .execute()
+        .await?;
+
+    let crypto_amount = fiat_amount * 10**(decimals + 2) / fiat_amount;
+
+
+    let addresses: Value = serde_json::from_str(fs::read_to_string(common.config.addresses_file)); // TODO: Don't read and parse it each time. // TODO: more specific type
+    web3.
+    let token = Token::at(web3, TODO).await?;
+    let tx = token
+        .bidOn(bid_date.timestamp(), crypto_amount)
+        .from(account)
+        .gas_price(1_000_000.into()) // TODO
+        .execute()
+        .await?;
+
+    // FIXME: wait for confirmations before writing to DB
+    // let receipt = instance
+    //     .my_important_function()
+    //     .poll_interval(Duration::from_secs(5))
+    //     .confirmations(2)
+    //     .execute_confirm()
+    //     .await?;
+}
+
+#[derive(Deserialize)]
+struct ConfirmPaymentForm {
+    payment_intent_id: String,
+    crypto_account: String,
+    bid_date: String,
+}
+
+// FIXME: Queue this to the DB for the case of interruption.
 #[post("/confirm-payment")]
 pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::Data<Common>) -> Result<impl Responder, MyError> {
-    // TODO
-    finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await?;
+    let stripe_client = stripe::Client::new(&common.config.stripe.secret_key);
+
+    let url = format!("https://api.stripe.com/v1/payment_intents/{}", payment_intent_id);
+    let intent = client.get(url)
+        .basic_auth::<&str, &str>(&common.config.stripe.secret_key, None)
+        .send().await?
+        .json().await?;
+
+    if intent.get("currency") != Some("usd") {
+        return Ok(HttpResponse::BadRequest().body("Wrong currency")); // TODO: JSON
+    }
+    let fiat_amount = intent.get("amount")?.parse::<i64>()?;
+
+    if intent.get("status") == Some("succeeded") {
+        lock_funds(amount);
+        let result = finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await;
+        do_exchange((*common).get_ref(), crypto_account, form.bid_date.parse_from_rfc3339(), fiat_amount).await?;
+        lock_funds(-amount);
+        result?;
+    } else {
+
+    }
     Ok(web::Json(json!({})))
 }

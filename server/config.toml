@@ -2,6 +2,9 @@ host = "localhost"
 port = 8080
 url_prefix = "http://localhost"
 frontend_url_prefix = "http://localhost:3000"
+ethreum_endpoint = "http://localhost:8545"
+price_oracle_address = "0x4497B606be93e773bbA5eaCFCb2ac5E2214220Eb"  # GLMR to USD
+addresses_file = "../addresses.json"
 
 [secrets]
 mother_hash = "Yeimawi2chohdeis1chiGhoochap?ooD8aeghee2tie(diN6ieB&aeng8eiRei_z"  # 64 bytes

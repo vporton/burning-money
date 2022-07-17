@@ -37,6 +37,7 @@ pub struct Config {
     port: u16,
     url_prefix: String,
     frontend_url_prefix: String,
+    price_oracle_address: String,
     secrets: SecretsConfig,
     database: DBConfig,
     stripe: StripeConfig,
