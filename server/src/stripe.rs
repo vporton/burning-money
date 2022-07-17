@@ -1,5 +1,5 @@
 use ethcontract::transaction::Account;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use web3::api::Web3;
 use web3::types::*;
 use std::collections::HashMap;
@@ -7,10 +7,12 @@ use std::fs;
 use std::str::FromStr;
 use actix_web::{Responder, get, post, HttpResponse, web};
 use actix_web::http::header::LOCATION;
+use chrono::{DateTime, Utc};
 use ethkey::{EthAccount};
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use toml::value::Datetime;
 use web3::contract::{Contract, Options};
 use web3::transports::Http;
 use crate::{Common, MyError, stripe};
@@ -107,9 +109,7 @@ fn lock_funds(amount: i64) -> Result<(), MyError> {
 ethcontract::contract!("../artifacts/@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json");
 
 async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: Common, crypto_account: H160, bid_date: String, crypto_amount: i64) -> Result<(), MyError> {
-    // TODO
-    let ethereum_key = &**common.ethereum_key;
-    // let account = Account::Locked(ethereum_key, common.config.secrets.ethereum_password.into(), None);
+    let bid_date: DateTime<Utc> = bid_date.parse()?;
 
     let token =
         Contract::from_json(
@@ -164,7 +164,7 @@ async fn fiat_to_crypto(web3: &Web3<Http>, addresses: &Value, fiat_amount: i64) 
         .execute()
         .await?;
 
-    fiat_amount * 10**(decimals + 2) / fiat_amount; // FIXME: add our "tax"
+    Ok(fiat_amount * 10**(decimals + 2) / fiat_amount) // FIXME: add our "tax"
 }
 
 // FIXME: Queue this to the DB for the case of interruption.
