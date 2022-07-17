@@ -3,11 +3,12 @@ use std::time::Duration;
 use web3::api::Web3;
 use web3::types::*;
 use std::collections::HashMap;
+use std::fs;
 use actix_web::{Responder, get, post, HttpResponse, web};
 use actix_web::http::header::LOCATION;
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use web3::transports::Http;
 use crate::{Common, MyError, stripe};
 
@@ -103,12 +104,15 @@ async fn do_exchange(common: Common, crypto_account: String, bid_date: String, f
     // TODO
     let ethereum_key = &**common.ethereum_key;
     // let account = Account::Locked(ethereum_key, common.config.secrets.ethereum_password.into(), None);
+    let addresses: Value = serde_json::from_str(fs::read_to_string(common.config.addresses_file)); // TODO: Don't read and parse it each time. // TODO: more specific type
+    let addresses = addresses.get(common.config.ethereum_network)?;
 
-    let transport = Http::new(common.config.ethereum_endpoint);
+    let transport = Http::new(&common.config.ethereum_endpoint);
     let web3 = Web3::new(transport);
 
-    let price_oracle = AggregatorV3Interface::at(web3, common.config.oracle_address).await?;
+    let price_oracle = AggregatorV3Interface::at(web3, addresses.get("oracle_address")?).await?;
 
+    // TODO: Query `decimals` only once.
     let decimals = price_oracle
         .decimals()
         .from(ethereum_key)
@@ -129,12 +133,10 @@ async fn do_exchange(common: Common, crypto_account: String, bid_date: String, f
     let crypto_amount = fiat_amount * 10**(decimals + 2) / fiat_amount;
 
 
-    let addresses: Value = serde_json::from_str(fs::read_to_string(common.config.addresses_file)); // TODO: Don't read and parse it each time. // TODO: more specific type
-    let addresses = addresses.get(common.config.ethereum_network)?;
     let token = Token::at(web3.clone(), addresses).await?;
     let tx = token
         .bidOn(bid_date.timestamp(), crypto_amount)
-        .from(account)
+        .from(ethereum_key)
         .gas_price(1_000_000.into()) // TODO
         .execute()
         .await?;
@@ -158,9 +160,12 @@ struct ConfirmPaymentForm {
 // FIXME: Queue this to the DB for the case of interruption.
 #[post("/confirm-payment")]
 pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::Data<Common>) -> Result<impl Responder, MyError> {
-    let stripe_client = stripe::Client::new(&common.config.stripe.secret_key);
+    // let stripe_client = stripe::Client::new(&common.config.stripe.secret_key);
 
-    let url = format!("https://api.stripe.com/v1/payment_intents/{}", payment_intent_id);
+    let client = reqwest::Client::builder()
+        .user_agent(crate::APP_USER_AGENT)
+        .build()?;
+    let url = format!("https://api.stripe.com/v1/payment_intents/{}", form.payment_intent_id);
     let intent = client.get(url)
         .basic_auth::<&str, &str>(&common.config.stripe.secret_key, None)
         .send().await?
@@ -172,10 +177,10 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
     let fiat_amount = intent.get("amount")?.parse::<i64>()?;
 
     if intent.get("status") == Some("succeeded") {
-        lock_funds(amount);
+        lock_funds(collateral_amount);
         let result = finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await;
         do_exchange((*common).get_ref(), crypto_account, form.bid_date.parse_from_rfc3339(), fiat_amount).await?;
-        lock_funds(-amount);
+        lock_funds(-collateral_amount);
         result?;
     } else {
 

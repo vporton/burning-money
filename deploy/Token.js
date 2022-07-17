@@ -13,7 +13,6 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
     const token = await myDeploy(
         Token, network, deployer, "Token",
         [
-            getAddress(networkName, 'collateral'),
             Math.floor(BN.from(1).div(BN.from(2 * 24*3600*365.25)).mul(BN.from(2).pow(BN.from(64)))), // 2 times per 2 years
             forwarder,
             addresses.beneficiant,
