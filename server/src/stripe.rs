@@ -11,6 +11,7 @@ use ethkey::{EthAccount};
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use web3::contract::{Contract, Options};
 use web3::transports::Http;
 use crate::{Common, MyError, stripe};
 
@@ -103,7 +104,6 @@ fn lock_funds(amount: i64) -> Result<(), MyError> {
     // FIXME
 }
 
-ethcontract::contract!("../artifacts/contracts/Token.sol/Token.json");
 ethcontract::contract!("../artifacts/@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json");
 
 async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: Common, crypto_account: H160, bid_date: String, crypto_amount: i64) -> Result<(), MyError> {
@@ -111,13 +111,18 @@ async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: Common, crypt
     let ethereum_key = &**common.ethereum_key;
     // let account = Account::Locked(ethereum_key, common.config.secrets.ethereum_password.into(), None);
 
-    let token = Token::at(&web3, <H160>::from_str(&addresses["Token"].to_string())?); // FIXME: panics
-    let tx = token
-        .bidOn(bid_date.timestamp(), crypto_amount, crypto_account)
-        .from(ethereum_key)
-        .gas_price(1_000_000.into()) // TODO
-        .execute()
-        .await?;
+    let token =
+        Contract::from_json(
+            web3.eth(),
+            <H160>::from_str(&addresses["Token"].to_string())?,
+            include_bytes!("../../artifacts/contracts/Token.sol/Token.json"),
+        )?;
+    let tx = token.signed_call(
+        "bidOn",
+        (bid_date.timestamp(), crypto_amount, crypto_account),
+        Options::default(),
+        common.ethereum_key.into(),
+    ).await?;
 
     // FIXME: wait for confirmations before writing to DB
     // let receipt = instance
