@@ -130,8 +130,8 @@ async fn do_exchange(common: Common, crypto_account: String, bid_date: String, f
 
 
     let addresses: Value = serde_json::from_str(fs::read_to_string(common.config.addresses_file)); // TODO: Don't read and parse it each time. // TODO: more specific type
-    web3.
-    let token = Token::at(web3, TODO).await?;
+    let addresses = addresses.get(common.config.ethereum_network)?;
+    let token = Token::at(web3.clone(), addresses).await?;
     let tx = token
         .bidOn(bid_date.timestamp(), crypto_amount)
         .from(account)
