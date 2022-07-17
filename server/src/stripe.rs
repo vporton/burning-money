@@ -106,8 +106,6 @@ fn lock_funds(amount: i64) -> Result<(), MyError> {
     // FIXME
 }
 
-ethcontract::contract!("../artifacts/@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json");
-
 async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: Common, crypto_account: H160, bid_date: String, crypto_amount: i64) -> Result<(), MyError> {
     let bid_date: DateTime<Utc> = bid_date.parse()?;
 
@@ -143,26 +141,23 @@ struct ConfirmPaymentForm {
 }
 
 async fn fiat_to_crypto(web3: &Web3<Http>, addresses: &Value, fiat_amount: i64) -> Result<i64, MyError> {
-    // TODO: Refactor below to a separate function:
-    let price_oracle = AggregatorV3Interface::at(web3, addresses.get("oracle_address")?).await?;
+    let price_oracle =
+        Contract::from_json(
+            web3.eth(),
+            <H160>::from_str(&addresses["collateralOracle"].to_string())?,
+            include_bytes!("../../artifacts/@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json"),
+        )?;
 
     // TODO: Query `decimals` only once.
-    let decimals = price_oracle
-        .decimals()
-        // .from(ethereum_key)
-        .execute()
-        .await?;
+    let accounts = web3.eth().accounts().await?;
+    let decimals = price_oracle.query("decimals", (accounts[0],), None, Options::default(), None).await?;
     let (
         roundId,
         answer,
         startedAt,
         updatedAt,
-        answeredInRound
-    ) = price_oracle
-        .latestRoundData()
-        // .from(ethereum_key)
-        .execute()
-        .await?;
+        answeredInRound,
+    ) = price_oracle.query("latestRoundData", (accounts[0],), None, Options::default(), None).await?;
 
     Ok(fiat_amount * 10**(decimals + 2) / fiat_amount) // FIXME: add our "tax"
 }

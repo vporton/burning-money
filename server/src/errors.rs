@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, write};
 use std::io;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError, web};
@@ -58,6 +58,9 @@ pub enum MyError {
     AuthenticationFailed(AuthenticationFailedError),
     Anyhow(anyhow::Error),
     FromHex(rustc_hex::FromHexError),
+    ParseTime(chrono::ParseError),
+    Web3(web3::Error),
+    Web3Abi(web3::ethabi::Error),
 }
 
 #[derive(Serialize)]
@@ -113,6 +116,9 @@ impl Display for MyError {
             Self::AuthenticationFailed(err) => write!(f, "Authentication failed."),
             Self::Anyhow(err) => write!(f, "Error: {}", err),
             Self::FromHex(_err) => write!(f, "Error converting from hex"),
+            Self::ParseTime(err) => write!(f, "Parsing time: {}", err),
+            Self::Web3(err) => write!(f, "Web3 error: {}", err),
+            Self::Web3Abi(err) => write!(f, "Web3 ABI error: {}", err),
         }
     }
 }
@@ -228,5 +234,23 @@ impl From<anyhow::Error> for MyError {
 impl From<rustc_hex::FromHexError> for MyError {
     fn from(value: rustc_hex::FromHexError) -> Self {
         Self::FromHex(value)
+    }
+}
+
+impl From<chrono::ParseError> for MyError {
+    fn from(value: chrono::ParseError) -> Self {
+        Self::ParseTime(value)
+    }
+}
+
+impl From<web3::Error> for MyError {
+    fn from(value: web3::Error) -> Self {
+        Self::Web3Abi(value)
+    }
+}
+
+impl From<web3::ethabi::Error> for MyError {
+    fn from(value: web3::ethabi::Error) -> Self {
+        Self::Web3Abi(value)
     }
 }
