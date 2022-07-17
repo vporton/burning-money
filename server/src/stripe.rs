@@ -99,6 +99,10 @@ async fn finalize_payment(payment_intent_id: &str, common: &Common) -> Result<()
     Ok(())
 }
 
+fn lock_funds(amount: i64) -> Result<(), MyError> {
+    // FIXME
+}
+
 ethcontract::contract!("../artifacts/contracts/Token.sol/Token.json");
 ethcontract::contract!("../artifacts/@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json");
 
@@ -107,7 +111,7 @@ async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: Common, crypt
     let ethereum_key = &**common.ethereum_key;
     // let account = Account::Locked(ethereum_key, common.config.secrets.ethereum_password.into(), None);
 
-    let token = Token::at(&web3, <H160>::from_str(&addresses["Token"].to_string())?)?.await?; // FIXME: panics
+    let token = Token::at(&web3, <H160>::from_str(&addresses["Token"].to_string())?); // FIXME: panics
     let tx = token
         .bidOn(bid_date.timestamp(), crypto_amount, crypto_account)
         .from(ethereum_key)
@@ -122,6 +126,8 @@ async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: Common, crypt
     //     .confirmations(2)
     //     .execute_confirm()
     //     .await?;
+
+    Ok(())
 }
 
 #[derive(Deserialize)]
@@ -183,10 +189,10 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
         let addresses = addresses.get(common.config.ethereum_network)?;
 
         let collateral_amount = fiat_to_crypto(&web3, addresses, fiat_amount).await?;
-        lock_funds(collateral_amount);
+        lock_funds(collateral_amount)?;
         let result = finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await;
         do_exchange(&web3, addresses, (*common).get_ref(), <H160>::from_str(&form.crypto_account)?, form.bid_date.parse_from_rfc3339(), collateral_amount).await?;
-        lock_funds(-collateral_amount);
+        lock_funds(-collateral_amount)?;
         result?;
     } else {
         // TODO

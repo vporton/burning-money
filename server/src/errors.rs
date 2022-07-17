@@ -57,6 +57,7 @@ pub enum MyError {
     Json(serde_json::Error),
     AuthenticationFailed(AuthenticationFailedError),
     Anyhow(anyhow::Error),
+    FromHex(rustc_hex::FromHexError),
 }
 
 #[derive(Serialize)]
@@ -111,6 +112,7 @@ impl Display for MyError {
             Self::Json(err) => write!(f, "JSON error: {err}"),
             Self::AuthenticationFailed(err) => write!(f, "Authentication failed."),
             Self::Anyhow(err) => write!(f, "Error: {}", err),
+            Self::FromHex(_err) => write!(f, "Error converting from hex"),
         }
     }
 }
@@ -220,5 +222,11 @@ impl From<AuthenticationFailedError> for MyError {
 impl From<anyhow::Error> for MyError {
     fn from(value: anyhow::Error) -> Self {
         Self::Anyhow(value)
+    }
+}
+
+impl From<rustc_hex::FromHexError> for MyError {
+    fn from(value: rustc_hex::FromHexError) -> Self {
+        Self::FromHex(value)
     }
 }

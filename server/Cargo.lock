@@ -2913,6 +2913,7 @@ dependencies = [
  "r2d2-diesel",
  "rand 0.8.5",
  "reqwest",
+ "rustc-hex",
  "secp256k1 0.20.3",
  "serde",
  "serde_derive",
