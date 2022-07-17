@@ -60,15 +60,15 @@ contract Token is ERC20, ERC2771Context, Ownable {
 
     /// `_time` must be a multiple of 24*3600, otherwise the bid is lost.
     /// Need to approve this contract for transfers of collateral before calling this function.
-    function bidOn(uint _day, uint256 _collateralAmount) public {
+    function bidOn(uint _day, uint256 _collateralAmount, address _for) public {
         uint _curDay = block.timestamp / (24*3600);
         require(_curDay < _day, "You bade too late");
         totalBids[_day] += _collateralAmount; // Solidity 0.8 overflow protection
         unchecked { // Overflow checked by the previous statement.
-            bids[_day][_msgSender()] += _collateralAmount;
+            bids[_day][_for] += _collateralAmount;
         }
         collateral.transferFrom(_msgSender(), beneficiant, _collateralAmount);
-        emit Bid(_msgSender(), _day, _collateralAmount);
+        emit Bid(_msgSender(), _for, _day, _collateralAmount);
     }
 
     function withdrawalAmount(uint _day) public view returns(uint256) {
@@ -105,6 +105,6 @@ contract Token is ERC20, ERC2771Context, Ownable {
     event BeneficiantChanged(address beneficiant);
     event SetReferral(address sender, address referral);
     event OurMint(address sender, address account, uint256 amount);
-    event Bid(address sender, uint day, uint256 amount);
+    event Bid(address sender, address for_, uint day, uint256 amount);
     event Withdraw(address sender, uint day, address account, uint256 amount);
 }

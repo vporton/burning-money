@@ -48,7 +48,7 @@ export default function Bid() {
         if(allowance.lt(utils.parseEther(bidAmount))) {
             await collateral.connect(provider.getSigner(0)).approve(token.address, utils.parseEther(bidAmount));
         }
-        await token.connect(provider.getSigner(0)).bidOn(day, utils.parseEther(bidAmount), {
+        await token.connect(provider.getSigner(0)).bidOn(await provider.getSigner(0).getAddress(), day, utils.parseEther(bidAmount), {
             // gasLimit: String(estimation.mul(BN.from(1.3))), // TODO
             gasLimit: '200000',
         });
