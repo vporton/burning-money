@@ -11,30 +11,27 @@ import { ABDKMath64x64 } from "abdk-libraries-solidity/ABDKMath64x64.sol";
 contract Token is ERC20, ERC2771Context, Ownable {
     using ABDKMath64x64 for int128;
 
-    IERC20 public collateral;
     int128 public growthRate;
     mapping (address => address) public referrals;
-    address public beneficiant;
+    address payable public beneficiant;
     mapping (uint => mapping(address => uint256)) public bids; // time => (address => bid)
     mapping (uint => uint256) public totalBids; // time => total bid
 
     constructor(
-        IERC20 _collateral,
         int128 _growthRate,
         address _trustedForwarder,
-        address _beneficiant,
+        address payable _beneficiant,
         string memory _name,
         string memory _symbol
     )
         ERC2771Context(_trustedForwarder) ERC20(_name, _symbol)
     {
-        collateral = _collateral;
         growthRate = _growthRate;
         beneficiant = _beneficiant;
-        emit TokenCreated(_collateral, _growthRate, _trustedForwarder, _beneficiant, _name, _symbol);
+        emit TokenCreated(_growthRate, _trustedForwarder, _beneficiant, _name, _symbol);
     }
 
-    function changeBeneficiant(address _beneficiant) public onlyOwner {
+    function changeBeneficiant(address payable _beneficiant) public onlyOwner {
         beneficiant = _beneficiant;
         emit BeneficiantChanged(_beneficiant);
     }
@@ -67,7 +64,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
         unchecked { // Overflow checked by the previous statement.
             bids[_day][_for] += _collateralAmount;
         }
-        collateral.transferFrom(_msgSender(), beneficiant, _collateralAmount);
+        beneficiant.transfer(_collateralAmount);
         emit Bid(_msgSender(), _for, _day, _collateralAmount);
     }
 
@@ -95,7 +92,6 @@ contract Token is ERC20, ERC2771Context, Ownable {
     }
 
     event TokenCreated(
-        IERC20 collateral,
         int128 growthRate,
         address trustedForwarder,
         address beneficiant,
