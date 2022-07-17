@@ -39,6 +39,7 @@ pub struct Config {
     frontend_url_prefix: String,
     ethereum_network: String,
     ethereum_endpoint: String, // or Url?
+    addresses_file: String,
     secrets: SecretsConfig,
     database: DBConfig,
     stripe: StripeConfig,

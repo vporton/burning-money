@@ -106,7 +106,7 @@ fn lock_funds(amount: i64) -> Result<(), MyError> {
     // FIXME
 }
 
-async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: Common, crypto_account: H160, bid_date: String, crypto_amount: i64) -> Result<(), MyError> {
+async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: &Common, crypto_account: H160, bid_date: String, crypto_amount: i64) -> Result<(), MyError> {
     let bid_date: DateTime<Utc> = bid_date.parse()?;
 
     let token =
@@ -159,7 +159,7 @@ async fn fiat_to_crypto(web3: &Web3<Http>, addresses: &Value, fiat_amount: i64) 
         answeredInRound,
     ) = price_oracle.query("latestRoundData", (accounts[0],), None, Options::default(), None).await?;
 
-    Ok(fiat_amount * 10**(decimals + 2) / fiat_amount) // FIXME: add our "tax"
+    Ok(fiat_amount * i64::pow(10, decimals) / fiat_amount) // FIXME: add our "tax"
 }
 
 // FIXME: Queue this to the DB for the case of interruption.
@@ -171,27 +171,27 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
         .user_agent(crate::APP_USER_AGENT)
         .build()?;
     let url = format!("https://api.stripe.com/v1/payment_intents/{}", form.payment_intent_id);
-    let intent = client.get(url)
+    let intent: Value = client.get(url)
         .basic_auth::<&str, &str>(&common.config.stripe.secret_key, None)
         .send().await?
         .json().await?;
 
-    if intent.get("currency") != Some("usd") {
+    if intent.get("currency").unwrap().as_str() != Some("usd") { // TODO: unwrap()
         return Ok(HttpResponse::BadRequest().body("Wrong currency")); // TODO: JSON
     }
-    let fiat_amount = intent.get("amount")?.parse::<i64>()?;
+    let fiat_amount = intent.get("amount").unwrap().as_i64().unwrap(); // TODO: unwrap()
 
-    if intent.get("status") == Some("succeeded") {
+    if intent.get("status").unwrap().as_str() == Some("succeeded") { // TODO: unwrap()
         let transport = Http::new(&common.config.ethereum_endpoint)?;
-        let web3 = Web3::new(transport)?;
+        let web3 = Web3::new(transport);
 
-        let addresses: Value = serde_json::from_str(fs::read_to_string(common.config.addresses_file)?); // TODO: Don't read and parse it each time. // TODO: more specific type
-        let addresses = addresses.get(common.config.ethereum_network)?;
+        let addresses: Value = serde_json::from_str(fs::read_to_string(common.config.addresses_file.as_str())?)?; // TODO: Don't read and parse it each time. // TODO: more specific type
+        let addresses = addresses.get(&common.config.ethereum_network).unwrap(); // TODO: unwrap()
 
         let collateral_amount = fiat_to_crypto(&web3, addresses, fiat_amount).await?;
         lock_funds(collateral_amount)?;
         let result = finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await;
-        do_exchange(&web3, addresses, (*common).get_ref(), <H160>::from_str(&form.crypto_account)?, form.bid_date.parse_from_rfc3339(), collateral_amount).await?;
+        do_exchange(&web3, addresses, common.get_ref(), <H160>::from_str(&form.crypto_account)?, form.bid_date.parse_from_rfc3339(), collateral_amount).await?;
         lock_funds(-collateral_amount)?;
         result?;
     } else {

@@ -61,6 +61,7 @@ pub enum MyError {
     ParseTime(chrono::ParseError),
     Web3(web3::Error),
     Web3Abi(web3::ethabi::Error),
+    Web3Contract(web3::contract::Error),
 }
 
 #[derive(Serialize)]
@@ -119,6 +120,7 @@ impl Display for MyError {
             Self::ParseTime(err) => write!(f, "Parsing time: {}", err),
             Self::Web3(err) => write!(f, "Web3 error: {}", err),
             Self::Web3Abi(err) => write!(f, "Web3 ABI error: {}", err),
+            Self::Web3Contract(err) => write!(f, "Web3 contract error: {}", err),
         }
     }
 }
@@ -252,5 +254,11 @@ impl From<web3::Error> for MyError {
 impl From<web3::ethabi::Error> for MyError {
     fn from(value: web3::ethabi::Error) -> Self {
         Self::Web3Abi(value)
+    }
+}
+
+impl From<web3::contract::Error> for MyError {
+    fn from(value: web3::contract::Error) -> Self {
+        Self::Web3Contract(value)
     }
 }
