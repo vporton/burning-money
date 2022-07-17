@@ -4,8 +4,10 @@ use web3::api::Web3;
 use web3::types::*;
 use std::collections::HashMap;
 use std::fs;
+use std::str::FromStr;
 use actix_web::{Responder, get, post, HttpResponse, web};
 use actix_web::http::header::LOCATION;
+use ethkey::{EthAccount};
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -100,42 +102,14 @@ async fn finalize_payment(payment_intent_id: &str, common: &Common) -> Result<()
 ethcontract::contract!("../artifacts/contracts/Token.sol/Token.json");
 ethcontract::contract!("../artifacts/@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json");
 
-async fn do_exchange(common: Common, crypto_account: String, bid_date: String, fiat_amount: i64) -> Result<(), MyError> {
+async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: Common, crypto_account: H160, bid_date: String, crypto_amount: i64) -> Result<(), MyError> {
     // TODO
     let ethereum_key = &**common.ethereum_key;
     // let account = Account::Locked(ethereum_key, common.config.secrets.ethereum_password.into(), None);
-    let addresses: Value = serde_json::from_str(fs::read_to_string(common.config.addresses_file)); // TODO: Don't read and parse it each time. // TODO: more specific type
-    let addresses = addresses.get(common.config.ethereum_network)?;
 
-    let transport = Http::new(&common.config.ethereum_endpoint);
-    let web3 = Web3::new(transport);
-
-    let price_oracle = AggregatorV3Interface::at(web3, addresses.get("oracle_address")?).await?;
-
-    // TODO: Query `decimals` only once.
-    let decimals = price_oracle
-        .decimals()
-        .from(ethereum_key)
-        .execute()
-        .await?;
-    let (
-        roundId,
-        answer,
-        startedAt,
-        updatedAt,
-        answeredInRound
-    ) = price_oracle
-        .latestRoundData()
-        .from(ethereum_key)
-        .execute()
-        .await?;
-
-    let crypto_amount = fiat_amount * 10**(decimals + 2) / fiat_amount;
-
-
-    let token = Token::at(web3.clone(), addresses).await?;
+    let token = Token::at(&web3, <H160>::from_str(&addresses["Token"].to_string())?)?.await?; // FIXME: panics
     let tx = token
-        .bidOn(bid_date.timestamp(), crypto_amount)
+        .bidOn(bid_date.timestamp(), crypto_amount, crypto_account)
         .from(ethereum_key)
         .gas_price(1_000_000.into()) // TODO
         .execute()
@@ -155,6 +129,31 @@ struct ConfirmPaymentForm {
     payment_intent_id: String,
     crypto_account: String,
     bid_date: String,
+}
+
+async fn fiat_to_crypto(web3: &Web3<Http>, addresses: &Value, fiat_amount: i64) -> Result<i64, MyError> {
+    // TODO: Refactor below to a separate function:
+    let price_oracle = AggregatorV3Interface::at(web3, addresses.get("oracle_address")?).await?;
+
+    // TODO: Query `decimals` only once.
+    let decimals = price_oracle
+        .decimals()
+        // .from(ethereum_key)
+        .execute()
+        .await?;
+    let (
+        roundId,
+        answer,
+        startedAt,
+        updatedAt,
+        answeredInRound
+    ) = price_oracle
+        .latestRoundData()
+        // .from(ethereum_key)
+        .execute()
+        .await?;
+
+    fiat_amount * 10**(decimals + 2) / fiat_amount; // FIXME: add our "tax"
 }
 
 // FIXME: Queue this to the DB for the case of interruption.
@@ -177,13 +176,20 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
     let fiat_amount = intent.get("amount")?.parse::<i64>()?;
 
     if intent.get("status") == Some("succeeded") {
+        let transport = Http::new(&common.config.ethereum_endpoint)?;
+        let web3 = Web3::new(transport)?;
+
+        let addresses: Value = serde_json::from_str(fs::read_to_string(common.config.addresses_file)?); // TODO: Don't read and parse it each time. // TODO: more specific type
+        let addresses = addresses.get(common.config.ethereum_network)?;
+
+        let collateral_amount = fiat_to_crypto(&web3, addresses, fiat_amount).await?;
         lock_funds(collateral_amount);
         let result = finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await;
-        do_exchange((*common).get_ref(), crypto_account, form.bid_date.parse_from_rfc3339(), fiat_amount).await?;
+        do_exchange(&web3, addresses, (*common).get_ref(), <H160>::from_str(&form.crypto_account)?, form.bid_date.parse_from_rfc3339(), collateral_amount).await?;
         lock_funds(-collateral_amount);
         result?;
     } else {
-
+        // TODO
     }
     Ok(web::Json(json!({})))
 }

@@ -4,7 +4,7 @@ url_prefix = "http://localhost"
 frontend_url_prefix = "http://localhost:3000"
 ethereum_endpoint = "http://localhost:8545"
 ethereum_network = "local"
-addresses_file = "../addresses.json"
+addresses_file = "../dist/deployed-addresses.json"
 
 [secrets]
 mother_hash = "Yeimawi2chohdeis1chiGhoochap?ooD8aeghee2tie(diN6ieB&aeng8eiRei_z"  # 64 bytes
