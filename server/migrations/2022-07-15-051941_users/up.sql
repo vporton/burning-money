@@ -5,5 +5,6 @@ CREATE TABLE users (
   email TEXT NOT NULL,
   password TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  passed_kyc BOOLEAN NOT NULL DEFAULT TRUE, -- TODO
   CONSTRAINT unique_email UNIQUE (email)
 );

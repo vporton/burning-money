@@ -23,12 +23,8 @@ export default function Card() {
     return <>
         {user === null ? <><NavLink to={'/login'}>Login</NavLink> <NavLink to={'/register'}>Register</NavLink></> : <a href='#' onClick={logout}>Logout</a>}
         <p>You mine CardToken by using a credit card or a bank account (unlike Bitcoin that is mined by costly equipment).</p>
-        <p>To mine an amount of CardToken corresponding to a certain amount of money, pay any amount of money
-            to your account 
-            first your account will be anonymously stored in our database and then you pay.
-            After you paid, our system will initiate crypto transfer to your account.
-        </p>
-        <PaymentForm/>
+        <p>To mine an amount of CardToken corresponding to a certain amount of money, pay any amount of money.</p>
+        {user !== null ? <PaymentForm/> : ""}
     </>
 }
 
@@ -41,8 +37,8 @@ function PaymentForm() {
     const [showPayment, setShowPayment] = useState(false);
     const [showPaymentError, setShowPaymentError] = useState("");
     const [paymentIntentId, setPaymentIntentId] = useState("");
-    const userAccountRef = useRef(null);
-    const fiatAmountRef = useRef<HTMLInputElement>(null);
+    const [userAccount, setUserAccount] = useState("");
+    const fiatAmountRef = useRef<HTMLInputElement>(null); // TOOD: Use events instead.
     useEffect(() => {
         async function doIt() {
             const stripePubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text(); // TODO: Fetch it only once.
@@ -77,13 +73,13 @@ function PaymentForm() {
         <>
             <p>
                 <label htmlFor="userAccount">Your crypto account:</label> {" "}
-                <input type="text" id="userAccount" ref={userAccountRef}/> {" "}
+                <input type="text" id="userAccount" onChange={e => setUserAccount(e.target.value)}/> {" "}
                 <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
                 <input type="number" id="fiatAmount" ref={fiatAmountRef}
                     onChange={e => setFiatAmount(e.target.value as unknown as number)}/> {/* FIXME */}
             </p>
             {showPayment && <Elements stripe={stripePromise} options={options}>
-                <PaymentFormContent paymentIntentId={paymentIntentId}/>
+                <PaymentFormContent paymentIntentId={paymentIntentId} userAccount={userAccount}/>
             </Elements>}
             {!showPayment && <p>{showPaymentError}</p>}
         </>
@@ -101,7 +97,7 @@ function PaymentFormContent(props: any) {
             if (response.error) {
               alert(response.error); // FIXME
             } else if (response.requires_action) {
-              // Use Stripe.js to handle the required next action
+                // Use Stripe.js to handle the required next action
                 const {
                     error: errorAction,
                     paymentIntent
@@ -110,25 +106,26 @@ function PaymentFormContent(props: any) {
                 });
 
                 if (errorAction) {
-                    alert(errorAction); // FIXME
+                    alert(errorAction); // TODO
                 } else {
                     alert("Success."); // FIXME
                 }
             } else {
-                alert("You've paid."); // FIXME
+                alert("You've paid."); // TODO
             }
           }
         
         const stripePaymentMethodHandler = function (result: any) {
             if (result.error) {
-                alert(result.error); // FIXME
+                alert(result.error); // TODO
             } else {
                 // Otherwise send paymentIntent.id to your server
-                fetch('/confirmPayment', {
+                fetch('/confirm-payment', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         payment_intent_id: result.paymentIntent.id,
+                        crypto_account: props.userAccount,
                     })
                 }).then(function (res) {
                     return res.json();

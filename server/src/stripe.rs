@@ -79,3 +79,27 @@ pub async fn create_payment_intent(q: web::Query<CreateStripeCheckout>, common: 
     let data: Data = serde_json::from_slice(res.bytes().await?.as_ref())?;
     Ok(web::Json(data))
 }
+
+#[derive(Deserialize)]
+struct ConfirmPaymentForm {
+    payment_intent_id: String,
+    crypto_account: String,
+}
+
+async fn finalize_payment(payment_intent_id: &str, common: &Common) -> Result<(), MyError> {
+    let client = reqwest::Client::builder()
+        .user_agent(crate::APP_USER_AGENT)
+        .build()?;
+    let url = format!("https://api.stripe.com/v1/payment_intents/{}/confirm", payment_intent_id);
+    client.post(url)
+        .basic_auth::<&str, &str>(&common.config.stripe.secret_key, None)
+        .send().await?;
+    Ok(())
+}
+
+#[post("/confirm-payment")]
+pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::Data<Common>) -> Result<impl Responder, MyError> {
+    // TODO
+    finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await?;
+    Ok(web::Json(json!({})))
+}

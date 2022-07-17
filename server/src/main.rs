@@ -118,7 +118,7 @@ async fn main() -> Result<(), MyError> {
             .service(user_identity)
             .service(user_register)
             .service(user_login)
-            .service(user_logout)
+            // .service(user_logout) // TODO
             .service(about_us)
             .service(stripe_public_key)
             .service(create_payment_intent)

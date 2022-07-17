@@ -16,6 +16,7 @@ table! {
         email -> Text,
         password -> Text,
         created_at -> Timestamp,
+        passed_kyc -> Bool,
     }
 }
 
