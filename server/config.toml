@@ -9,7 +9,7 @@ addresses_file = "../dist/deployed-addresses.json"
 [secrets]
 mother_hash = "Yeimawi2chohdeis1chiGhoochap?ooD8aeghee2tie(diN6ieB&aeng8eiRei_z"  # 64 bytes
 ethereum_key_file = "ethereum.priv"
-ethereum_password = "ooP2Aigodee8OoM3"
+#ethereum_password = "ooP2Aigodee8OoM3"
 
 [database]
 url = "postgres://rserver:123@localhost/rserver"

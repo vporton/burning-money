@@ -8,12 +8,12 @@ use std::str::FromStr;
 use actix_web::{Responder, get, post, HttpResponse, web};
 use actix_web::http::header::LOCATION;
 use chrono::{DateTime, Utc};
-use ethkey::{EthAccount};
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use toml::value::Datetime;
 use web3::contract::{Contract, Options};
+use web3::signing::SecretKeyRef;
 use web3::transports::Http;
 use crate::{Common, MyError, stripe};
 
@@ -119,7 +119,7 @@ async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: &Common, cryp
         "bidOn",
         (bid_date.timestamp(), crypto_amount, crypto_account),
         Options::default(),
-        common.ethereum_key.into(),
+        common.ethereum_key.as_bytes(), // TODO: seems to claim that it's insecure: https://docs.rs/web3/latest/web3/signing/trait.Key.html
     ).await?;
 
     // FIXME: wait for confirmations before writing to DB
@@ -185,13 +185,17 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
         let transport = Http::new(&common.config.ethereum_endpoint)?;
         let web3 = Web3::new(transport);
 
-        let addresses: Value = serde_json::from_str(fs::read_to_string(common.config.addresses_file.as_str())?)?; // TODO: Don't read and parse it each time. // TODO: more specific type
+        let addresses: Value = serde_json::from_str(fs::read_to_string(common.config.addresses_file.as_str())?.as_str())?; // TODO: Don't read and parse it each time. // TODO: more specific type
         let addresses = addresses.get(&common.config.ethereum_network).unwrap(); // TODO: unwrap()
 
         let collateral_amount = fiat_to_crypto(&web3, addresses, fiat_amount).await?;
         lock_funds(collateral_amount)?;
         let result = finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await;
-        do_exchange(&web3, addresses, common.get_ref(), <H160>::from_str(&form.crypto_account)?, form.bid_date.parse_from_rfc3339(), collateral_amount).await?;
+        do_exchange(&web3,
+                    addresses,
+                    common.get_ref(),
+                    <H160>::from_str(&form.crypto_account)?,
+                    form.bid_date.as_str().parse_from_rfc3339(), collateral_amount).await?;
         lock_funds(-collateral_amount)?;
         result?;
     } else {
