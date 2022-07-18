@@ -5,7 +5,7 @@ use std::convert::identity;
 use serde_derive::Deserialize;
 use std::fs;
 use std::fs::{File, OpenOptions};
-use std::io::{ErrorKind, Read};
+use std::io::{ErrorKind, Read, Write};
 use std::str::FromStr;
 use std::sync::Arc;
 use actix_cors::Cors;
@@ -13,6 +13,7 @@ use actix_identity::IdentityMiddleware;
 use actix_session::{SessionMiddleware, storage::CookieSessionStore};
 use actix_web::{App, HttpServer, web};
 use actix_web::cookie::Key;
+use actix_web::dev::Payload::H2;
 use actix_web::web::Data;
 use env_logger::TimestampPrecision;
 use clap::Parser;
@@ -20,6 +21,7 @@ use ethers_core::types::H256;
 use lambda_web::{is_running_on_lambda, run_actix_on_lambda};
 use rand::RngCore;
 use rand::rngs::StdRng;
+use secp256k1::SecretKey;
 use errors::CannotLoadOrGenerateEthereumKeyError;
 use crate::errors::MyError;
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
@@ -71,7 +73,7 @@ pub struct StripeConfig {
 pub struct Common {
     config: Config,
     db_pool: MyPool,
-    ethereum_key: Arc<Box<EthAccount>>,
+    ethereum_key: Arc<secp256k1::SecretKey>,
 }
 
 #[derive(Parser)]
@@ -92,33 +94,24 @@ async fn main() -> Result<(), MyError> {
     let config: Config = toml::from_str(fs::read_to_string(args.config.as_str())?.as_str())?;
 
     let manager = MyDBConnectionManager::new(config.database.url.clone());
-    let eth_account = { // FIXME: if \n at the end
-        let file = OpenOptions::new().read(true).write(true).create(true).open(config.secrets.ethereum_key_file)?;
-            match <H256>::from_str(file.read_to_string()?) {
-                Ok(s) => <H256>::try_from(bytes)?,
-                Err(err) => {
-
-                }
-            }
-            if err.kind() == ErrorKind::NotFound {
-                let bytes = [0u8; 32];
-                rand::thread_rng().fill_bytes(&mut bytes); // efficient?
-
-
-            } else {
-                return Err::<_, MyError>(err.into())?;
-            }
-            Ok(file) => {
+    let eth_account = {
+        let mut file = OpenOptions::new().read(true).write(true).create(true).open(config.secrets.ethereum_key_file)?;
+        let mut s;
+        file.read_to_string(&mut s)?;
+        let mut v = s.chars().collect::<Vec<char>>();
+        while v.last().unwrap().is_whitespace() { // FIXME: unwrap()
+            let _ = v.pop();
+        }
+        let s: String = v.into_iter().collect();
+        match SecretKey::from_str(s.as_str()) {
+            Ok(val) => val,
+            Err(err) => {
+                let result = SecretKey::new(&mut rand::thread_rng());
+                file.write(result.display_secret().to_string().as_bytes());
+                result
             }
         }
     };
-    // let eth_account = match EthAccount::load_or_generate(
-    //     config.secrets.ethereum_key_file.clone(),
-    //     config.secrets.ethereum_password.clone()
-    // ) {
-    //     Ok(val) => val,
-    //     Err(err) => Err(CannotLoadOrGenerateEthereumKeyError::new(format!("{}", err)))?, // a trouble with Sync workaround
-    // };
     let config2 = config.clone();
     let common = Common {
         config,

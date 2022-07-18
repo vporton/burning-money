@@ -8,6 +8,7 @@ use std::str::FromStr;
 use actix_web::{Responder, get, post, HttpResponse, web};
 use actix_web::http::header::LOCATION;
 use chrono::{DateTime, Utc};
+use secp256k1::SecretKey;
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -119,7 +120,7 @@ async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: &Common, cryp
         "bidOn",
         (bid_date.timestamp(), crypto_amount, crypto_account),
         Options::default(),
-        common.ethereum_key.as_bytes(), // TODO: seems to claim that it's insecure: https://docs.rs/web3/latest/web3/signing/trait.Key.html
+        common.ethereum_key, // TODO: seems to claim that it's insecure: https://docs.rs/web3/latest/web3/signing/trait.Key.html
     ).await?;
 
     // FIXME: wait for confirmations before writing to DB
