@@ -1,7 +1,6 @@
 use web3::api::Web3;
 use web3::types::*;
 use std::collections::HashMap;
-use std::fs;
 use std::str::FromStr;
 use actix_web::{get, post, Responder, web, HttpResponse};
 use actix_web::http::header::CONTENT_TYPE;
@@ -104,11 +103,11 @@ fn lock_funds(_amount: i64) -> Result<(), MyError> {
 }
 
 // FIXME: What is FixedOffset?
-async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: &Common, crypto_account: H160, bid_date: DateTime<FixedOffset>, crypto_amount: i64) -> Result<(), MyError> {
+async fn do_exchange(web3: &Web3<Http>, common: &Common, crypto_account: H160, bid_date: DateTime<FixedOffset>, crypto_amount: i64) -> Result<(), MyError> {
     let token =
         Contract::from_json(
             web3.eth(),
-            <H160>::from_str(&addresses["Token"].to_string())?,
+            common.addresses.token,
             include_bytes!("../../artifacts/contracts/Token.sol/Token.json"),
         )?;
     let _tx = token.signed_call(
@@ -136,11 +135,11 @@ pub struct ConfirmPaymentForm {
     bid_date: String,
 }
 
-async fn fiat_to_crypto(web3: &Web3<Http>, addresses: &Value, fiat_amount: i64) -> Result<i64, MyError> {
+async fn fiat_to_crypto(web3: &Web3<Http>, common: &Common, fiat_amount: i64) -> Result<i64, MyError> {
     let price_oracle =
         Contract::from_json(
             web3.eth(),
-            <H160>::from_str(&addresses["collateralOracle"].to_string())?,
+            common.addresses.collateral_oracle,
             include_bytes!("../../artifacts/@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json"),
         )?;
 
@@ -183,14 +182,10 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
         let transport = Http::new(&common.config.ethereum_endpoint)?;
         let web3 = Web3::new(transport);
 
-        let addresses: Value = serde_json::from_str(fs::read_to_string(common.config.addresses_file.as_str())?.as_str())?; // TODO: Don't read and parse it each time. // TODO: more specific type
-        let addresses = addresses.get(&common.config.ethereum_network).unwrap(); // TODO: unwrap()
-
-        let collateral_amount = fiat_to_crypto(&web3, addresses, fiat_amount).await?;
+        let collateral_amount = fiat_to_crypto(&web3, &*common, fiat_amount).await?;
         lock_funds(collateral_amount)?;
         let result = finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await;
         do_exchange(&web3,
-                    addresses,
                     common.get_ref(),
                     <H160>::from_str(&form.crypto_account)?,
                     DateTime::parse_from_rfc3339(form.bid_date.as_str())?,
