@@ -1,7 +1,5 @@
-#[macro_use] extern crate diesel;
 extern crate core;
 
-use std::cell::{Cell, RefCell};
 use tokio::sync::Mutex;
 use serde_derive::Deserialize;
 use std::fs;
@@ -28,7 +26,6 @@ use crate::pages::{about_us, not_found};
 use crate::stripe::{create_payment_intent, stripe_public_key};
 use crate::user::{user_identity, user_login, user_register};
 
-mod our_db_pool;
 mod pages;
 mod errors;
 mod stripe;
@@ -165,7 +162,7 @@ async fn main() -> Result<(), MyError> {
     };
 
     if is_running_on_lambda() {
-        // run_actix_on_lambda(factory).await?; // Run on AWS Lambda. // TODO
+        run_actix_on_lambda(factory).await?; // Run on AWS Lambda. // TODO
     } else {
         HttpServer::new(factory)
             .bind((config2.host.as_str(), config2.port))?

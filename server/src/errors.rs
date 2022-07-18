@@ -3,7 +3,7 @@ use std::io;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use actix_web::http::header::ContentType;
-use diesel::{Connection, ConnectionError};
+use diesel::ConnectionError;
 use ethers_core::abi::AbiError;
 use lambda_web::LambdaError;
 // use stripe::{RequestError, StripeError};

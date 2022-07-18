@@ -1,4 +1,3 @@
-use std::borrow::{Borrow, BorrowMut};
 use actix_identity::Identity;
 use actix_web::{get, post, HttpMessage, HttpRequest, Responder, web, HttpResponse};
 use diesel::{ExpressionMethods, insert_into, QueryDsl, RunQueryDsl};
