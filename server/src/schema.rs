@@ -26,6 +26,7 @@ diesel::table! {
         eth_account -> Bytea,
         usd_amount -> Int8,
         crypto_amount -> Int8,
+        bid_date -> Int8,
         status -> TxsStatusType,
         tx_id -> Nullable<Text>,
     }

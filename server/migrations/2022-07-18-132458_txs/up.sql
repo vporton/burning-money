@@ -6,6 +6,7 @@ CREATE TABLE txs (
     eth_account BYTEA NOT NULL,
     usd_amount BIGINT NOT NULL,
     crypto_amount BIGINT NOT NULL,
+    bid_date BIGINT NOT NULL,
     status txs_status_type NOT NULL DEFAULT 'created',
     tx_id TEXT NULL, -- Ethereum tx ID.
     CONSTRAINT txs_user_fk FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE

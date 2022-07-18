@@ -1,3 +1,4 @@
+use diesel::ExpressionMethods;
 use web3::api::Web3;
 use web3::types::*;
 use std::collections::HashMap;
@@ -5,6 +6,7 @@ use std::str::FromStr;
 use actix_web::{get, post, Responder, web, HttpResponse};
 use actix_web::http::header::CONTENT_TYPE;
 use chrono::{DateTime, FixedOffset};
+use diesel::{insert_into, RunQueryDsl};
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -179,21 +181,32 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
     let fiat_amount = intent.get("amount").unwrap().as_i64().unwrap(); // TODO: unwrap()
 
     if intent.get("status").unwrap().as_str() == Some("succeeded") { // TODO: unwrap()
-        let transport = Http::new(&common.config.ethereum_endpoint)?;
-        let web3 = Web3::new(transport);
-
-        let collateral_amount = fiat_to_crypto(&web3, &*common, fiat_amount).await?;
+        use crate::schema::txs::dsl::*;
+        let collateral_amount = fiat_to_crypto(&*common, fiat_amount).await?;
+        // FIXME: Transaction.
         lock_funds(collateral_amount)?;
-        let result = finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await;
-        do_exchange(&web3,
-                    common.get_ref(),
-                    <H160>::from_str(&form.crypto_account)?,
-                    DateTime::parse_from_rfc3339(form.bid_date.as_str())?,
-                    collateral_amount).await?;
-        lock_funds(-collateral_amount)?;
-        result?;
+        finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await?;
+        insert_into(txs).values(&(
+            // user_id.eq(??), // FIXME
+            eth_account.eq(<H160>::from_str(&form.crypto_account)?.as_bytes()),
+            usd_amount.eq(fiat_amount),
+            crypto_amount.eq(collateral_amount),
+            bid_date.eq(DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp()),
+        ))
+            .execute(&mut *common.db.lock().await)?;
     } else {
         // TODO
     }
     Ok(HttpResponse::Ok().append_header((CONTENT_TYPE, "application/json")).body("{}"))
+}
+
+async fn exchange_item(item: crate::schema::txs::dsl::txs, common: &Common) -> Result<(), MyError> {
+    // FIXME: Add transaction
+    do_exchange(&common.web3,
+                common,
+                x,
+                y,
+                collateral_amount).await?;
+    lock_funds(-collateral_amount)?;
+    Ok(())
 }

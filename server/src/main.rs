@@ -20,7 +20,9 @@ use lambda_web::{is_running_on_lambda, run_actix_on_lambda};
 use rand::thread_rng;
 use secp256k1::SecretKey;
 use serde_json::Value;
+use web3::transports::Http;
 use web3::types::H160;
+use web3::Web3;
 use crate::errors::MyError;
 use crate::pages::{about_us, not_found};
 use crate::stripe::{create_payment_intent, stripe_public_key};
@@ -77,6 +79,7 @@ pub struct Common {
     db: Arc<Mutex<PgConnection>>,
     ethereum_key: Arc<secp256k1::SecretKey>,
     addresses: Addresses,
+    web3: Web3<Http>,
 }
 
 #[derive(Parser)]
@@ -128,7 +131,11 @@ async fn main() -> Result<(), MyError> {
             // TODO: `expect()`
             token: <H160>::from_str(addresses.get("Token").expect("Can't parse addresses file").as_str().expect("Can't parse addresses file"))?,
             collateral_oracle:  <H160>::from_str(addresses.get("collateralOracle").expect("Can't parse addresses file").as_str().expect("Can't parse addresses file"))?,
-        }
+        },
+        web3: {
+            let transport = Http::new(&common.config.ethereum_endpoint)?;
+            Web3::new(transport)
+        },
     };
 
     let factory = move || {
