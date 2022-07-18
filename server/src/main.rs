@@ -95,8 +95,9 @@ async fn main() -> Result<(), MyError> {
 
     let manager = MyDBConnectionManager::new(config.database.url.clone());
     let eth_account = {
-        let mut file = OpenOptions::new().read(true).write(true).create(true).open(config.secrets.ethereum_key_file)?;
-        let mut s;
+        // let mut file = OpenOptions::new().read(true).write(true).create(true).open(config.secrets.ethereum_key_file.clone())?;
+        let mut file = OpenOptions::new().read(true).write(true).create(true).open(&config.secrets.ethereum_key_file)?;
+        let mut s = "".to_string();
         file.read_to_string(&mut s)?;
         let mut v = s.chars().collect::<Vec<char>>();
         while v.last().unwrap().is_whitespace() { // FIXME: unwrap()

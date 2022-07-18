@@ -104,7 +104,7 @@ impl Display for MyError {
             Self::DatabaseConnection(err) => write!(f, "Cannot connect to DB: {err}"),
             Self::Database(err) => write!(f, "DB error: {err}"),
             Self::Secp256k1(err) => write!(f, "(De)ciphering error: {err}"),
-            Self::EthSign(err) => write!(f, "Ethereum signing error: {err}"),
+            // Self::EthSign(err) => write!(f, "Ethereum signing error: {err}"),
             Self::Abi(err) => write!(f, "Ethereum ABI error: {err}"),
             Self::CannotLoadOrGenerateEthereumKey(err) => write!(f, "Ethereum key error: {err}"),
             Self::Toml(err) => write!(f, "INI file error: {err}"),
@@ -240,7 +240,7 @@ impl From<chrono::ParseError> for MyError {
 
 impl From<web3::Error> for MyError {
     fn from(value: web3::Error) -> Self {
-        Self::Web3Abi(value)
+        Self::Web3(value)
     }
 }
 

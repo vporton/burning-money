@@ -1018,7 +1018,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "uint",
- "web3",
+ "web3 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "zeroize",
 ]
 
@@ -1035,7 +1035,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tiny-keccak",
- "web3",
+ "web3 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2550,7 +2550,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "toml",
- "web3",
+ "web3 0.18.0 (git+https://github.com/vporton/rust-web3?branch=feature/80_bit_token)",
 ]
 
 [[package]]
@@ -3362,6 +3362,40 @@ name = "web3"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44f258e254752d210b84fe117b31f1e3cc9cbf04c0d747eb7f8cf7cf5e370f6d"
+dependencies = [
+ "arrayvec",
+ "base64",
+ "bytes",
+ "derive_more",
+ "ethabi 16.0.0",
+ "ethereum-types 0.12.1",
+ "futures",
+ "futures-timer",
+ "headers",
+ "hex",
+ "idna",
+ "jsonrpc-core",
+ "log",
+ "once_cell",
+ "parking_lot 0.12.1",
+ "pin-project",
+ "reqwest",
+ "rlp",
+ "secp256k1",
+ "serde",
+ "serde_json",
+ "soketto",
+ "tiny-keccak",
+ "tokio",
+ "tokio-util 0.6.10",
+ "url",
+ "web3-async-native-tls",
+]
+
+[[package]]
+name = "web3"
+version = "0.18.0"
+source = "git+https://github.com/vporton/rust-web3?branch=feature/80_bit_token#402dca402023e68536e2091d6b521b366dd8e7d1"
 dependencies = [
  "arrayvec",
  "base64",

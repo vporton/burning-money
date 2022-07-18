@@ -32,7 +32,7 @@ actix-session = { version = "0.7.0", features = ["cookie-session"] }
 actix-identity = "0.5.1"
 anyhow = "1.0.58"
 log = "0.4.17"
-web3 = "0.18.0"
+web3 = { git = "https://github.com/vporton/rust-web3", branch = "feature/80_bit_token" }
 ethcontract = "0.17.0"
 rustc-hex = "2.1.0"
 chrono = "0.4.19"

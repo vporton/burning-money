@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::str::FromStr;
 use actix_web::{get, post, HttpMessage, HttpRequest, Responder, web, HttpResponse};
-use actix_web::http::header::LOCATION;
+use actix_web::http::header::{CONTENT_TYPE, LOCATION};
 use chrono::{DateTime, FixedOffset, Utc};
 use secp256k1::SecretKey;
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
@@ -160,8 +160,7 @@ async fn fiat_to_crypto(web3: &Web3<Http>, addresses: &Value, fiat_amount: i64) 
         answeredInRound,
     ): ([u8; 80], [u8; 256], [u8; 256], [u8; 256], [u8; 80]) =
         price_oracle.query("latestRoundData", (accounts[0],), None, Options::default(), None).await?;
-    let answer = <U256>::from_little_endian(&answer as &[u8]);
-    let answer = <i64>::try_from(answer)?;
+    let answer = <u64>::from_le_bytes(answer[..8].try_into().unwrap()) as i64;
     Ok(fiat_amount * i64::pow(10, decimals) / answer) // FIXME: add our "tax"
 }
 
@@ -205,5 +204,5 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
     } else {
         // TODO
     }
-    Ok(web::Json(""))
+    Ok(HttpResponse::Ok().append_header((CONTENT_TYPE, "application/json")).body("{}"))
 }
