@@ -1,22 +1,17 @@
-use ethcontract::transaction::Account;
-use std::time::{Duration, SystemTime};
 use web3::api::Web3;
 use web3::types::*;
 use std::collections::HashMap;
 use std::fs;
 use std::str::FromStr;
-use actix_web::{get, post, HttpMessage, HttpRequest, Responder, web, HttpResponse};
-use actix_web::http::header::{CONTENT_TYPE, LOCATION};
-use chrono::{DateTime, FixedOffset, Utc};
-use secp256k1::SecretKey;
+use actix_web::{get, post, Responder, web, HttpResponse};
+use actix_web::http::header::CONTENT_TYPE;
+use chrono::{DateTime, FixedOffset};
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use toml::value::Datetime;
+use serde_json::Value;
 use web3::contract::{Contract, Options};
-use web3::signing::SecretKeyRef;
 use web3::transports::Http;
-use crate::{Common, MyError, stripe};
+use crate::{Common, MyError};
 
 // We follow https://stripe.com/docs/payments/finalize-payments-on-the-server
 
@@ -103,7 +98,7 @@ async fn finalize_payment(payment_intent_id: &str, common: &Common) -> Result<()
     Ok(())
 }
 
-fn lock_funds(amount: i64) -> Result<(), MyError> {
+fn lock_funds(_amount: i64) -> Result<(), MyError> {
     // FIXME
     Ok(())
 }
@@ -116,7 +111,7 @@ async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: &Common, cryp
             <H160>::from_str(&addresses["Token"].to_string())?,
             include_bytes!("../../artifacts/contracts/Token.sol/Token.json"),
         )?;
-    let tx = token.signed_call(
+    let _tx = token.signed_call(
         "bidOn",
         (bid_date.timestamp(), crypto_amount, crypto_account),
         Options::default(),
@@ -135,7 +130,7 @@ async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: &Common, cryp
 }
 
 #[derive(Deserialize)]
-struct ConfirmPaymentForm {
+pub struct ConfirmPaymentForm {
     payment_intent_id: String,
     crypto_account: String,
     bid_date: String,
@@ -153,11 +148,11 @@ async fn fiat_to_crypto(web3: &Web3<Http>, addresses: &Value, fiat_amount: i64) 
     let accounts = web3.eth().accounts().await?;
     let decimals = price_oracle.query("decimals", (accounts[0],), None, Options::default(), None).await?;
     let (
-        roundId,
+        _round_id,
         answer,
-        startedAt,
-        updatedAt,
-        answeredInRound,
+        _started_at,
+        _updated_at,
+        _answered_in_round,
     ): ([u8; 80], [u8; 256], [u8; 256], [u8; 256], [u8; 80]) =
         price_oracle.query("latestRoundData", (accounts[0],), None, Options::default(), None).await?;
     let answer = <u64>::from_le_bytes(answer[..8].try_into().unwrap()) as i64;
@@ -165,6 +160,7 @@ async fn fiat_to_crypto(web3: &Web3<Http>, addresses: &Value, fiat_amount: i64) 
 }
 
 // FIXME: Queue this to the DB for the case of interruption.
+// FIXME: Both this and /create-payment-intent only for authenticated and KYC-verified users.
 #[post("/confirm-payment")]
 pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::Data<Common>) -> Result<impl Responder, MyError> {
     // let stripe_client = stripe::Client::new(&common.config.stripe.secret_key);

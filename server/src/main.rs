@@ -1,11 +1,10 @@
 #[macro_use] extern crate diesel;
 extern crate core;
 
-use std::convert::identity;
 use serde_derive::Deserialize;
 use std::fs;
-use std::fs::{File, OpenOptions};
-use std::io::{ErrorKind, Read, Write};
+use std::fs::OpenOptions;
+use std::io::{Read, Write};
 use std::str::FromStr;
 use std::sync::Arc;
 use actix_cors::Cors;
@@ -13,16 +12,12 @@ use actix_identity::IdentityMiddleware;
 use actix_session::{SessionMiddleware, storage::CookieSessionStore};
 use actix_web::{App, HttpServer, web};
 use actix_web::cookie::Key;
-use actix_web::dev::Payload::H2;
 use actix_web::web::Data;
 use env_logger::TimestampPrecision;
 use clap::Parser;
-use ethers_core::types::H256;
 use lambda_web::{is_running_on_lambda, run_actix_on_lambda};
-use rand::{RngCore, thread_rng};
-use rand::rngs::StdRng;
+use rand::thread_rng;
 use secp256k1::SecretKey;
-use errors::CannotLoadOrGenerateEthereumKeyError;
 use crate::errors::MyError;
 use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
 use crate::pages::{about_us, not_found};
@@ -106,9 +101,9 @@ async fn main() -> Result<(), MyError> {
         let s: String = v.into_iter().collect();
         match SecretKey::from_str(s.as_str()) {
             Ok(val) => val,
-            Err(err) => {
+            Err(_) => {
                 let result = SecretKey::new(&mut thread_rng());
-                file.write(result.display_secret().to_string().as_bytes());
+                file.write(result.display_secret().to_string().as_bytes())?;
                 result
             }
         }

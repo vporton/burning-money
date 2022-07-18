@@ -24,7 +24,7 @@ pub async fn user_identity(user: Option<Identity>) -> impl Responder {
 }
 
 #[derive(Clone, Deserialize)]
-struct User {
+pub struct User {
     id: Option<u64>,
     first_name: String,
     last_name: String,
@@ -55,7 +55,7 @@ pub async fn user_register(request: HttpRequest, info: web::Form<User>, common: 
 }
 
 #[derive(Deserialize)]
-struct Login {
+pub struct Login {
     email: String,
     password: String,
 }

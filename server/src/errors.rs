@@ -1,9 +1,8 @@
-use std::fmt::{Display, Formatter, write};
+use std::fmt::{Display, Formatter};
 use std::io;
 use actix_web::http::StatusCode;
-use actix_web::{HttpResponse, ResponseError, web};
+use actix_web::{HttpResponse, ResponseError};
 use actix_web::http::header::ContentType;
-use askama::Template;
 use ethers_core::abi::AbiError;
 use lambda_web::LambdaError;
 // use stripe::{RequestError, StripeError};
@@ -13,6 +12,7 @@ use serde::Serialize;
 pub struct CannotLoadOrGenerateEthereumKeyError(String);
 
 impl CannotLoadOrGenerateEthereumKeyError {
+    // TODO
     pub fn new(msg: String) -> Self {
         Self(msg)
     }
@@ -69,20 +69,20 @@ struct MyErrorJson {
 }
 
 impl MyError {
-    fn html(&self) -> String {
-        match self {
-            err => { // may indicate wrong UTF-8 encoding
-                #[derive(Template)]
-                #[template(path = "error-internal.html", escape = "html")]
-                struct ErrorInternal<'a> {
-                    text: &'a str,
-                }
-                ErrorInternal {
-                    text: err.to_string().as_str(),
-                }.render().unwrap()
-            }
-        }
-    }
+    // fn html(&self) -> String {
+    //     match self {
+    //         err => { // may indicate wrong UTF-8 encoding
+    //             #[derive(Template)]
+    //             #[template(path = "error-internal.html", escape = "html")]
+    //             struct ErrorInternal<'a> {
+    //                 text: &'a str,
+    //             }
+    //             ErrorInternal {
+    //                 text: err.to_string().as_str(),
+    //             }.render().unwrap()
+    //         }
+    //     }
+    // }
     fn json(&self) -> MyErrorJson {
         match self {
             err => { // may indicate wrong UTF-8 encoding
@@ -113,7 +113,7 @@ impl Display for MyError {
             // Self::StripeRequest(err) => write!(f, "Stripe request error: {err}"),
             Self::Reqwest(err) => write!(f, "Request error: {err}"),
             Self::Json(err) => write!(f, "JSON error: {err}"),
-            Self::AuthenticationFailed(err) => write!(f, "Authentication failed."),
+            Self::AuthenticationFailed(_) => write!(f, "Authentication failed."),
             Self::Anyhow(err) => write!(f, "Error: {}", err),
             Self::FromHex(_err) => write!(f, "Error converting from hex"),
             Self::ParseTime(err) => write!(f, "Parsing time: {}", err),

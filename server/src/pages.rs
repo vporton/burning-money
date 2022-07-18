@@ -1,10 +1,5 @@
-use actix_identity::Identity;
 use actix_web::{Responder, get, HttpResponse, web};
 use askama::Template;
-use diesel::{ExpressionMethods, insert_into, RunQueryDsl};
-use ethers_core::types::H160;
-use serde_json::json;
-use serde::{Deserialize, Serialize};
 use crate::Config;
 use crate::errors::MyError;
 
