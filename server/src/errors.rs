@@ -3,6 +3,7 @@ use std::io;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use actix_web::http::header::ContentType;
+use diesel::{Connection, ConnectionError};
 use ethers_core::abi::AbiError;
 use lambda_web::LambdaError;
 // use stripe::{RequestError, StripeError};
@@ -43,7 +44,7 @@ impl Display for AuthenticationFailedError {
 pub enum MyError {
     Template(askama::Error),
     IO(io::Error),
-    DatabaseConnection(r2d2::Error),
+    DbConnection(ConnectionError),
     Database(diesel::result::Error),
     Secp256k1(secp256k1::Error),
     Abi(AbiError),
@@ -101,7 +102,7 @@ impl Display for MyError {
         match self {
             Self::Template(err) => write!(f, "Error in Askama template: {err}"),
             Self::IO(err) => write!(f, "I/O error: {err}"),
-            Self::DatabaseConnection(err) => write!(f, "Cannot connect to DB: {err}"),
+            Self::DbConnection(err) => write!(f, "Cannot connect to DB: {err}"),
             Self::Database(err) => write!(f, "DB error: {err}"),
             Self::Secp256k1(err) => write!(f, "(De)ciphering error: {err}"),
             // Self::EthSign(err) => write!(f, "Ethereum signing error: {err}"),
@@ -150,9 +151,9 @@ impl From<io::Error> for MyError {
     }
 }
 
-impl From<r2d2::Error> for MyError {
-    fn from(value: r2d2::Error) -> Self {
-        Self::DatabaseConnection(value)
+impl From<ConnectionError> for MyError {
+    fn from(value: ConnectionError) -> Self {
+        Self::DbConnection(value)
     }
 }
 

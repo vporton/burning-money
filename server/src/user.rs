@@ -1,3 +1,4 @@
+use std::borrow::{Borrow, BorrowMut};
 use actix_identity::Identity;
 use actix_web::{get, post, HttpMessage, HttpRequest, Responder, web, HttpResponse};
 use diesel::{ExpressionMethods, insert_into, QueryDsl, RunQueryDsl};
@@ -39,6 +40,7 @@ pub async fn user_register(request: HttpRequest, info: web::Form<User>, common: 
     // FIXME: Check email.
     let info = info.clone();
     use crate::schema::users::dsl::*;
+    let common = &**common;
     let v_id: i64 = insert_into(users).values(
         &(
             first_name.eq(info.first_name),
@@ -47,9 +49,8 @@ pub async fn user_register(request: HttpRequest, info: web::Form<User>, common: 
             password.eq(info.password), // FIXME: Check for strong password. // FIXME: Cipher password
         )
     )
-        // .execute(&*common.db_pool.get()?)?;
         .returning(id)
-        .get_result(&*common.db_pool.get()?)?;
+        .get_result(&mut *common.db.lock().await)?;
     Identity::login(&request.extensions(), format!("{}", v_id))?;
     Ok(web::Json(""))
 }
@@ -66,7 +67,7 @@ pub async fn user_login(request: HttpRequest, info: web::Form<Login>, common: we
     let (v_id, v_password) = users
         .filter(email.eq(info.email.clone()))
         .select((id, password))
-        .get_result::<(i64, String)>(&*common.db_pool.get()?)?;
+        .get_result::<(i64, String)>(&mut *common.db.lock().await)?;
     if v_password != info.password {
         return Err(AuthenticationFailedError::new().into());
     }

@@ -1,6 +1,8 @@
 #[macro_use] extern crate diesel;
 extern crate core;
 
+use std::cell::{Cell, RefCell};
+use tokio::sync::Mutex;
 use serde_derive::Deserialize;
 use std::fs;
 use std::fs::OpenOptions;
@@ -15,11 +17,13 @@ use actix_web::cookie::Key;
 use actix_web::web::Data;
 use env_logger::TimestampPrecision;
 use clap::Parser;
+use diesel::{Connection, PgConnection};
 use lambda_web::{is_running_on_lambda, run_actix_on_lambda};
 use rand::thread_rng;
 use secp256k1::SecretKey;
+use serde_json::Value;
+use web3::types::H160;
 use crate::errors::MyError;
-use crate::our_db_pool::{db_pool_builder, MyPool, MyDBConnectionCustomizer, MyDBConnectionManager};
 use crate::pages::{about_us, not_found};
 use crate::stripe::{create_payment_intent, stripe_public_key};
 use crate::user::{user_identity, user_login, user_register};
@@ -65,10 +69,17 @@ pub struct StripeConfig {
 }
 
 #[derive(Clone)]
+struct Addresses {
+    token: H160,
+    collateral_oracle: H160,
+}
+
+#[derive(Clone)]
 pub struct Common {
     config: Config,
-    db_pool: MyPool,
+    db: Arc<Mutex<PgConnection>>,
     ethereum_key: Arc<secp256k1::SecretKey>,
+    addresses: Addresses,
 }
 
 #[derive(Parser)]
@@ -88,7 +99,6 @@ async fn main() -> Result<(), MyError> {
 
     let config: Config = toml::from_str(fs::read_to_string(args.config.as_str())?.as_str())?;
 
-    let manager = MyDBConnectionManager::new(config.database.url.clone());
     let eth_account = {
         // let mut file = OpenOptions::new().read(true).write(true).create(true).open(config.secrets.ethereum_key_file.clone())?;
         let mut file = OpenOptions::new().read(true).write(true).create(true).open(&config.secrets.ethereum_key_file)?;
@@ -109,16 +119,24 @@ async fn main() -> Result<(), MyError> {
         }
     };
     let config2 = config.clone();
+
+    let addresses: Value = serde_json::from_str(fs::read_to_string(config.addresses_file.as_str())?.as_str())?;
+    let addresses = addresses.get(&config.ethereum_network).unwrap(); // TODO: unwrap()
+
     let common = Common {
         config,
-        db_pool: db_pool_builder()
-            .connection_customizer(Box::new(MyDBConnectionCustomizer::new()))
-            .build(manager)
-            .expect("Cannot connect to DB."),
+        db: Arc::new(Mutex::new(PgConnection::establish(config2.database.url.as_str())?)),
         ethereum_key: Arc::new(eth_account),
+        addresses: Addresses {
+            // TODO: `expect()`
+            token: <H160>::from_str(addresses.get("Token").expect("Can't parse addresses file").as_str().expect("Can't parse addresses file"))?,
+            collateral_oracle:  <H160>::from_str(addresses.get("collateralOracle").expect("Can't parse addresses file").as_str().expect("Can't parse addresses file"))?,
+        }
     };
 
     let factory = move || {
+        // let config = &config;
+        // let common = &common;
         let cors = Cors::default() // Construct CORS middleware builder
             .allowed_origin(&config2.frontend_url_prefix)
             .supports_credentials();
@@ -147,7 +165,7 @@ async fn main() -> Result<(), MyError> {
     };
 
     if is_running_on_lambda() {
-        run_actix_on_lambda(factory).await?; // Run on AWS Lambda.
+        // run_actix_on_lambda(factory).await?; // Run on AWS Lambda. // TODO
     } else {
         HttpServer::new(factory)
             .bind((config2.host.as_str(), config2.port))?
