@@ -5,9 +5,9 @@ use web3::types::*;
 use std::collections::HashMap;
 use std::fs;
 use std::str::FromStr;
-use actix_web::{Responder, get, post, HttpResponse, web};
+use actix_web::{get, post, HttpMessage, HttpRequest, Responder, web, HttpResponse};
 use actix_web::http::header::LOCATION;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset, Utc};
 use secp256k1::SecretKey;
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
@@ -105,11 +105,11 @@ async fn finalize_payment(payment_intent_id: &str, common: &Common) -> Result<()
 
 fn lock_funds(amount: i64) -> Result<(), MyError> {
     // FIXME
+    Ok(())
 }
 
-async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: &Common, crypto_account: H160, bid_date: String, crypto_amount: i64) -> Result<(), MyError> {
-    let bid_date: DateTime<Utc> = bid_date.parse()?;
-
+// FIXME: What is FixedOffset?
+async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: &Common, crypto_account: H160, bid_date: DateTime<FixedOffset>, crypto_amount: i64) -> Result<(), MyError> {
     let token =
         Contract::from_json(
             web3.eth(),
@@ -158,9 +158,11 @@ async fn fiat_to_crypto(web3: &Web3<Http>, addresses: &Value, fiat_amount: i64) 
         startedAt,
         updatedAt,
         answeredInRound,
-    ) = price_oracle.query("latestRoundData", (accounts[0],), None, Options::default(), None).await?;
-
-    Ok(fiat_amount * i64::pow(10, decimals) / fiat_amount) // FIXME: add our "tax"
+    ): ([u8; 80], [u8; 256], [u8; 256], [u8; 256], [u8; 80]) =
+        price_oracle.query("latestRoundData", (accounts[0],), None, Options::default(), None).await?;
+    let answer = <U256>::from_little_endian(&answer as &[u8]);
+    let answer = <i64>::try_from(answer)?;
+    Ok(fiat_amount * i64::pow(10, decimals) / answer) // FIXME: add our "tax"
 }
 
 // FIXME: Queue this to the DB for the case of interruption.
@@ -203,5 +205,5 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
     } else {
         // TODO
     }
-    Ok(web::Json(json!({})))
+    Ok(web::Json(""))
 }

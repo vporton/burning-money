@@ -4,7 +4,6 @@ use diesel::{ExpressionMethods, insert_into, QueryDsl, RunQueryDsl};
 use serde::{Deserialize, Serialize};
 use crate::{Common, MyError};
 use crate::errors::AuthenticationFailedError;
-use crate::MyError::AuthenticationFailed;
 
 #[get("/identity")]
 pub async fn user_identity(user: Option<Identity>) -> impl Responder {
