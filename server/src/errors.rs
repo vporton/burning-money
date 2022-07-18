@@ -46,7 +46,6 @@ pub enum MyError {
     DatabaseConnection(r2d2::Error),
     Database(diesel::result::Error),
     Secp256k1(secp256k1::Error),
-    EthSign(ethsign::Error),
     Abi(AbiError),
     CannotLoadOrGenerateEthereumKey(CannotLoadOrGenerateEthereumKeyError),
     Toml(toml::de::Error),
@@ -166,12 +165,6 @@ impl From<diesel::result::Error> for MyError {
 impl From<secp256k1::Error> for MyError {
     fn from(value: secp256k1::Error) -> Self {
         Self::Secp256k1(value)
-    }
-}
-
-impl From<ethsign::Error> for MyError {
-    fn from(value: ethsign::Error) -> Self {
-        Self::EthSign(value)
     }
 }
 

@@ -120,7 +120,7 @@ async fn do_exchange(web3: &Web3<Http>, addresses: &Value, common: &Common, cryp
         "bidOn",
         (bid_date.timestamp(), crypto_amount, crypto_account),
         Options::default(),
-        common.ethereum_key, // TODO: seems to claim that it's insecure: https://docs.rs/web3/latest/web3/signing/trait.Key.html
+        common.ethereum_key.clone(), // TODO: seems to claim that it's insecure: https://docs.rs/web3/latest/web3/signing/trait.Key.html
     ).await?;
 
     // FIXME: wait for confirmations before writing to DB
@@ -196,7 +196,8 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
                     addresses,
                     common.get_ref(),
                     <H160>::from_str(&form.crypto_account)?,
-                    form.bid_date.as_str().parse_from_rfc3339(), collateral_amount).await?;
+                    DateTime::parse_from_rfc3339(form.bid_date.as_str())?,
+                    collateral_amount).await?;
         lock_funds(-collateral_amount)?;
         result?;
     } else {

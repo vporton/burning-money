@@ -19,7 +19,7 @@ use env_logger::TimestampPrecision;
 use clap::Parser;
 use ethers_core::types::H256;
 use lambda_web::{is_running_on_lambda, run_actix_on_lambda};
-use rand::RngCore;
+use rand::{RngCore, thread_rng};
 use rand::rngs::StdRng;
 use secp256k1::SecretKey;
 use errors::CannotLoadOrGenerateEthereumKeyError;
@@ -106,7 +106,7 @@ async fn main() -> Result<(), MyError> {
         match SecretKey::from_str(s.as_str()) {
             Ok(val) => val,
             Err(err) => {
-                let result = SecretKey::new(&mut rand::thread_rng());
+                let result = SecretKey::new(&mut thread_rng());
                 file.write(result.display_secret().to_string().as_bytes());
                 result
             }
