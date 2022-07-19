@@ -164,6 +164,7 @@ async fn main() -> Result<(), MyError> {
         }
     }
 
+    let transactions_awaited2 = common.transactions_awaited.clone();
     spawn((move || async move {
         loop {
             // FIXME: Make pauses.
@@ -171,12 +172,13 @@ async fn main() -> Result<(), MyError> {
             let filter = eth.create_blocks_filter().await?;
             let mut stream = Box::pin(filter.stream(Duration::from_millis(2000))); // TODO
             loop {
+                let transactions_awaited = transactions_awaited2.clone();
                 // FIXME: What to do on errors?
                 if let Some(block_hash) = stream.next().await {
                     let block_hash = block_hash?;
                     if let Some(block) = common.web3.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
                         for tx in block.transactions {
-                            if common.transactions_awaited.lock().await.remove(&tx) {
+                            if transactions_awaited.lock().await.remove(&tx) {
                                 use crate::schema::txs::dsl::*;
                                 update(txs.filter(tx_id.eq(tx.as_bytes())))
                                     .set((status.eq(TxsStatusType::Confirmed), tx_id.eq(tx.as_bytes())))
