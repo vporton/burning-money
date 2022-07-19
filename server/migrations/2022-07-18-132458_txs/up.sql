@@ -8,7 +8,7 @@ CREATE TABLE txs (
     crypto_amount BIGINT NOT NULL,
     bid_date BIGINT NOT NULL,
     status txs_status_type NOT NULL DEFAULT 'created',
-    tx_id TEXT NULL, -- Ethereum tx ID.
+    tx_id BYTEA NOT NULL DEFAULT '', -- Ethereum tx ID. -- FIXME: Should be NULL.
     CONSTRAINT txs_user_fk FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX txs_user ON txs USING HASH(user_id);

@@ -21,7 +21,7 @@ use rand::thread_rng;
 use secp256k1::SecretKey;
 use serde_json::Value;
 use web3::transports::Http;
-use web3::types::H160;
+use web3::types::Address;
 use web3::Web3;
 use crate::errors::MyError;
 use crate::pages::{about_us, not_found};
@@ -33,6 +33,7 @@ mod errors;
 mod stripe;
 mod user;
 mod schema;
+mod models;
 
 static APP_USER_AGENT: &str = "CardToken seller";
 
@@ -69,8 +70,8 @@ pub struct StripeConfig {
 
 #[derive(Clone)]
 struct Addresses {
-    token: H160,
-    collateral_oracle: H160,
+    token: Address,
+    collateral_oracle: Address,
 }
 
 #[derive(Clone)]
@@ -129,11 +130,11 @@ async fn main() -> Result<(), MyError> {
         ethereum_key: Arc::new(eth_account),
         addresses: Addresses {
             // TODO: `expect()`
-            token: <H160>::from_str(addresses.get("Token").expect("Can't parse addresses file").as_str().expect("Can't parse addresses file"))?,
-            collateral_oracle:  <H160>::from_str(addresses.get("collateralOracle").expect("Can't parse addresses file").as_str().expect("Can't parse addresses file"))?,
+            token: <Address>::from_str(addresses.get("Token").expect("Can't parse addresses file").as_str().expect("Can't parse addresses file"))?,
+            collateral_oracle:  <Address>::from_str(addresses.get("collateralOracle").expect("Can't parse addresses file").as_str().expect("Can't parse addresses file"))?,
         },
         web3: {
-            let transport = Http::new(&common.config.ethereum_endpoint)?;
+            let transport = Http::new(&config2.ethereum_endpoint)?;
             Web3::new(transport)
         },
     };

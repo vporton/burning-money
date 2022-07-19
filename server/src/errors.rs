@@ -1,4 +1,5 @@
-use std::fmt::{Display, Formatter};
+use std::array::TryFromSliceError;
+use std::fmt::{Display, Formatter, write};
 use std::io;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
@@ -62,6 +63,7 @@ pub enum MyError {
     Web3(web3::Error),
     Web3Abi(web3::ethabi::Error),
     Web3Contract(web3::contract::Error),
+    ArrayLength(TryFromSliceError),
 }
 
 #[derive(Serialize)]
@@ -121,6 +123,7 @@ impl Display for MyError {
             Self::Web3(err) => write!(f, "Web3 error: {}", err),
             Self::Web3Abi(err) => write!(f, "Web3 ABI error: {}", err),
             Self::Web3Contract(err) => write!(f, "Web3 contract error: {}", err),
+            Self::ArrayLength(err) => write!(f, "Array length error: {}", err),
         }
     }
 }
@@ -254,5 +257,11 @@ impl From<web3::ethabi::Error> for MyError {
 impl From<web3::contract::Error> for MyError {
     fn from(value: web3::contract::Error) -> Self {
         Self::Web3Contract(value)
+    }
+}
+
+impl From<TryFromSliceError> for MyError {
+    fn from(value: TryFromSliceError) -> Self {
+        Self::ArrayLength(value)
     }
 }
