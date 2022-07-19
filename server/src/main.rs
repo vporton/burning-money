@@ -1,5 +1,6 @@
 extern crate core;
 
+use std::collections::HashSet;
 use diesel::OptionalExtension;
 use tokio::sync::Mutex;
 use serde_derive::Deserialize;
@@ -22,10 +23,13 @@ use secp256k1::SecretKey;
 use serde_json::Value;
 use web3::signing::{Key, SecretKeyRef};
 use web3::transports::Http;
-use web3::types::Address;
+use web3::types::{Address, H256};
 use web3::Web3;
 use diesel::QueryDsl;
 use diesel::ExpressionMethods;
+use web3::api::Eth;
+use tokio::spawn;
+use web3::api::EthFilter;
 use crate::errors::MyError;
 use crate::pages::{about_us, not_found};
 use crate::stripe::{create_payment_intent, stripe_public_key};
@@ -35,6 +39,7 @@ mod pages;
 mod errors;
 mod stripe;
 mod user;
+mod sql_types;
 mod schema;
 mod models;
 
@@ -84,6 +89,7 @@ pub struct Common {
     ethereum_key: Arc<secp256k1::SecretKey>,
     addresses: Addresses,
     web3: Web3<Http>,
+    transactions_awaited: Arc<Mutex<HashSet<H256>>>,
 }
 
 #[derive(Parser)]
@@ -140,6 +146,7 @@ async fn main() -> Result<(), MyError> {
             let transport = Http::new(&config2.ethereum_endpoint)?;
             Web3::new(transport)
         },
+        transactions_awaited: Arc::new(Mutex::new(HashSet::new())),
     };
 
     let funds = common.web3.eth().balance(
@@ -156,6 +163,13 @@ async fn main() -> Result<(), MyError> {
         }
     }
 
+    spawn((move || async move {
+        // loop {
+        //     let filter = Eth::new_block_filter(&common.web3.eth()).await?;
+        //     // TODO
+        // }
+        Ok::<_, MyError>(())
+    })());
 
     let factory = move || {
         let cors = Cors::default() // Construct CORS middleware builder

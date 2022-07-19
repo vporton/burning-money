@@ -14,6 +14,7 @@ use web3::signing::{Key, SecretKeyRef};
 use diesel::QueryDsl;
 use crate::{Common, MyError};
 use crate::errors::NotEnoughFundsError;
+use crate::sql_types::TxsStatusType;
 
 // We follow https://stripe.com/docs/payments/finalize-payments-on-the-server
 
@@ -111,15 +112,18 @@ async fn lock_funds(common: &Common, amount: i64) -> Result<(), MyError> {
     Ok(())
 }
 
-// FIXME: What is FixedOffset?
-async fn do_exchange(common: &Common, crypto_account: Address, bid_date: DateTime<Utc>, crypto_amount: i64) -> Result<(), MyError> {
+// It returns the Ethereum transaction (probably, yet not confirmed).
+async fn do_exchange(common: &Common, crypto_account: Address, bid_date: DateTime<Utc>, crypto_amount: i64)
+    -> Result<H256, MyError>
+{
+    // FIXME: Add transaction.
     let token =
         Contract::from_json(
             common.web3.eth(),
             common.addresses.token,
             include_bytes!("../../artifacts/contracts/Token.sol/Token.json"),
         )?;
-    let _tx = token.signed_call(
+    let tx = token.signed_call(
         "bidOn",
         (bid_date.timestamp(), crypto_amount, crypto_account),
         Options::default(),
@@ -134,7 +138,7 @@ async fn do_exchange(common: &Common, crypto_account: Address, bid_date: DateTim
     //     .execute_confirm()
     //     .await?;
 
-    Ok(())
+    Ok(tx)
 }
 
 #[derive(Deserialize)]
@@ -210,14 +214,18 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
 }
 
 async fn exchange_item(item: crate::models::Tx, common: &Common) -> Result<(), MyError> {
-    // FIXME: Add transaction
+    lock_funds(common, -item.usd_amount).await?;
     let naive = NaiveDateTime::from_timestamp(item.bid_date, 0);
-    do_exchange(
+    let tx = do_exchange(
         common,
         (<&[u8; 20]>::try_from(item.eth_account.as_slice())?).into(),
         DateTime::from_utc(naive, Utc),
         item.crypto_amount
     ).await?;
-    lock_funds(common, -item.usd_amount).await?;
+    use crate::schema::txs::dsl::*;
+    update(txs.filter(id.eq(item.id)))
+        .set((status.eq(TxsStatusType::SubmittedToBlockchain), tx_id.eq(tx.as_bytes())))
+        .execute(&mut *common.db.lock().await)?;
+    common.transactions_awaited.lock().await.insert(tx);
     Ok(())
 }
