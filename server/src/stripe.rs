@@ -110,7 +110,7 @@ async fn lock_funds(common: &Common, amount: i64) -> Result<(), MyError> {
     if amount >= v_free_funds { // FIXME: Take gas into account.
         return Err(NotEnoughFundsError::new().into());
     }
-    update(global).set(free_funds.eq(free_funds - amount)).execute(&mut *common.db.lock().await);
+    update(global).set(free_funds.eq(free_funds - amount)).execute(&mut *common.db.lock().await)?;
     Ok(())
 }
 
