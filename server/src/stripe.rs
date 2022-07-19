@@ -178,22 +178,26 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
     }
     let fiat_amount = intent.get("amount").unwrap().as_i64().unwrap(); // TODO: unwrap()
 
-    if intent.get("status").unwrap().as_str() == Some("succeeded") { // TODO: unwrap()
-        use crate::schema::txs::dsl::*;
-        let collateral_amount = fiat_to_crypto(&*common, fiat_amount).await?;
-        // FIXME: Transaction.
-        lock_funds(collateral_amount)?;
-        finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await?;
-        insert_into(txs).values(&(
-            // user_id.eq(??), // FIXME
-            eth_account.eq(<Address>::from_str(&form.crypto_account)?.as_bytes()),
-            usd_amount.eq(fiat_amount),
-            crypto_amount.eq(collateral_amount),
-            bid_date.eq(DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp()),
-        ))
-            .execute(&mut *common.db.lock().await)?;
-    } else {
-        // TODO
+    match intent.get("status").unwrap().as_str().unwrap() { // TODO: unwrap()
+        "succeeded" => {
+            use crate::schema::txs::dsl::*;
+            let collateral_amount = fiat_to_crypto(&*common, fiat_amount).await?;
+            // FIXME: Transaction.
+            lock_funds(collateral_amount)?;
+            finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await?;
+            insert_into(txs).values(&(
+                // user_id.eq(??), // FIXME
+                eth_account.eq(<Address>::from_str(&form.crypto_account)?.as_bytes()),
+                usd_amount.eq(fiat_amount),
+                crypto_amount.eq(collateral_amount),
+                bid_date.eq(DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp()),
+            ))
+                .execute(&mut *common.db.lock().await)?;
+        }
+        "canceled" => {
+            lock_funds(-fiat_amount)?;
+        }
+        _ => {}
     }
     Ok(HttpResponse::Ok().append_header((CONTENT_TYPE, "application/json")).body("{}"))
 }
