@@ -1,5 +1,6 @@
 extern crate core;
 
+use diesel::OptionalExtension;
 use tokio::sync::Mutex;
 use serde_derive::Deserialize;
 use std::fs;
@@ -10,19 +11,21 @@ use std::sync::Arc;
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::{SessionMiddleware, storage::CookieSessionStore};
-use actix_web::{App, HttpServer, web};
-use actix_web::cookie::Key;
+use actix_web::{App, cookie, HttpServer, web};
 use actix_web::web::Data;
 use env_logger::TimestampPrecision;
 use clap::Parser;
-use diesel::{Connection, PgConnection};
+use diesel::{Connection, insert_into, PgConnection, RunQueryDsl, update};
 use lambda_web::{is_running_on_lambda, run_actix_on_lambda};
 use rand::thread_rng;
 use secp256k1::SecretKey;
 use serde_json::Value;
+use web3::signing::{Key, SecretKeyRef};
 use web3::transports::Http;
 use web3::types::Address;
 use web3::Web3;
+use diesel::QueryDsl;
+use diesel::ExpressionMethods;
 use crate::errors::MyError;
 use crate::pages::{about_us, not_found};
 use crate::stripe::{create_payment_intent, stripe_public_key};
@@ -139,11 +142,26 @@ async fn main() -> Result<(), MyError> {
         },
     };
 
+    let funds = common.web3.eth().balance(
+         SecretKeyRef::new(&common.ethereum_key).address(), None).await?;
+    let funds = funds.as_u64() as i64;
+    { // block
+        use crate::schema::global::dsl::*;
+        // FIXME: transaction
+        let v_free_funds = global.select(free_funds).for_update().first::<i64>(&mut *common.db.lock().await).optional()?;
+        if let Some(v_free_funds) = v_free_funds {
+            update(global).set(free_funds.eq(funds)).execute(&mut *common.db.lock().await)?;
+        } else {
+            insert_into(global).values(free_funds.eq(funds)).execute(&mut *common.db.lock().await)?;
+        }
+    }
+
+
     let factory = move || {
         let cors = Cors::default() // Construct CORS middleware builder
             .allowed_origin(&config2.frontend_url_prefix)
             .supports_credentials();
-        let mother_hash = Key::from(config2.secrets.mother_hash.clone().as_bytes());
+        let mother_hash = cookie::Key::from(config2.secrets.mother_hash.clone().as_bytes());
         App::new()
             .wrap(IdentityMiddleware::default())
             .wrap(SessionMiddleware::builder(CookieSessionStore::default(), mother_hash)

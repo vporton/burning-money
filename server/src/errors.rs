@@ -42,6 +42,21 @@ impl Display for AuthenticationFailedError {
 }
 
 #[derive(Debug)]
+pub struct NotEnoughFundsError;
+
+impl NotEnoughFundsError {
+    pub fn new() -> Self {
+        Self { }
+    }
+}
+
+impl Display for NotEnoughFundsError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Not enough funds.")
+    }
+}
+
+#[derive(Debug)]
 pub enum MyError {
     Template(askama::Error),
     IO(io::Error),
@@ -64,6 +79,7 @@ pub enum MyError {
     Web3Abi(web3::ethabi::Error),
     Web3Contract(web3::contract::Error),
     ArrayLength(TryFromSliceError),
+    NotEnoughFunds(NotEnoughFundsError),
 }
 
 #[derive(Serialize)]
@@ -124,6 +140,7 @@ impl Display for MyError {
             Self::Web3Abi(err) => write!(f, "Web3 ABI error: {}", err),
             Self::Web3Contract(err) => write!(f, "Web3 contract error: {}", err),
             Self::ArrayLength(err) => write!(f, "Array length error: {}", err),
+            Self::NotEnoughFunds(_) => write!(f, "Not enough funds."),
         }
     }
 }
@@ -263,5 +280,11 @@ impl From<web3::contract::Error> for MyError {
 impl From<TryFromSliceError> for MyError {
     fn from(value: TryFromSliceError) -> Self {
         Self::ArrayLength(value)
+    }
+}
+
+impl From<NotEnoughFundsError> for MyError {
+    fn from(value: NotEnoughFundsError) -> Self {
+        Self::NotEnoughFunds(value)
     }
 }

@@ -1,4 +1,4 @@
-use diesel::ExpressionMethods;
+use diesel::{ExpressionMethods, update};
 use web3::api::Web3;
 use web3::types::*;
 use std::collections::HashMap;
@@ -11,8 +11,12 @@ use diesel::{insert_into, RunQueryDsl};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use web3::contract::{Contract, Options};
+use web3::signing::{Key, SecretKeyRef};
 use web3::transports::Http;
+use diesel::associations::HasTable;
+use diesel::QueryDsl;
 use crate::{Common, MyError};
+use crate::errors::NotEnoughFundsError;
 
 // We follow https://stripe.com/docs/payments/finalize-payments-on-the-server
 
@@ -99,8 +103,14 @@ async fn finalize_payment(payment_intent_id: &str, common: &Common) -> Result<()
     Ok(())
 }
 
-fn lock_funds(_amount: i64) -> Result<(), MyError> {
-    // FIXME
+async fn lock_funds(common: &Common, amount: i64) -> Result<(), MyError> {
+    // FIXME: transaction
+    use crate::schema::global::dsl::*;
+    let v_free_funds = global.select(free_funds).for_update().get_result::<i64>(&mut *common.db.lock().await)?;
+    if amount >= v_free_funds { // FIXME: Take gas into account.
+        return Err(NotEnoughFundsError::new().into());
+    }
+    update(global).set(free_funds.eq(free_funds - amount)).execute(&mut *common.db.lock().await);
     Ok(())
 }
 
@@ -183,7 +193,7 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
             use crate::schema::txs::dsl::*;
             let collateral_amount = fiat_to_crypto(&*common, fiat_amount).await?;
             // FIXME: Transaction.
-            lock_funds(collateral_amount)?;
+            lock_funds(&**common, collateral_amount).await?;
             finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await?;
             insert_into(txs).values(&(
                 // user_id.eq(??), // FIXME
@@ -195,7 +205,7 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
                 .execute(&mut *common.db.lock().await)?;
         }
         "canceled" => {
-            lock_funds(-fiat_amount)?;
+            lock_funds(&**common, -fiat_amount).await?;
         }
         _ => {}
     }
@@ -211,6 +221,6 @@ async fn exchange_item(item: crate::models::Tx, common: &Common) -> Result<(), M
         DateTime::from_utc(naive, Utc),
         item.crypto_amount
     ).await?;
-    lock_funds(-item.usd_amount)?;
+    lock_funds(common, -item.usd_amount).await?;
     Ok(())
 }

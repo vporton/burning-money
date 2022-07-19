@@ -7,6 +7,13 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    global (id) {
+        id -> Int4,
+        free_funds -> Int8,
+    }
+}
+
+diesel::table! {
     payments (id) {
         id -> Int4,
         user_account -> Bytea,
@@ -47,6 +54,7 @@ diesel::table! {
 diesel::joinable!(txs -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    global,
     payments,
     txs,
     users,
