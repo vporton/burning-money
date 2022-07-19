@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use actix_web::{get, post, Responder, web, HttpResponse};
 use actix_web::http::header::CONTENT_TYPE;
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, FixedOffset, NaiveDateTime, Utc};
 use diesel::{insert_into, RunQueryDsl};
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
@@ -105,10 +105,10 @@ fn lock_funds(_amount: i64) -> Result<(), MyError> {
 }
 
 // FIXME: What is FixedOffset?
-async fn do_exchange(web3: &Web3<Http>, common: &Common, crypto_account: H160, bid_date: DateTime<FixedOffset>, crypto_amount: i64) -> Result<(), MyError> {
+async fn do_exchange(common: &Common, crypto_account: Address, bid_date: DateTime<Utc>, crypto_amount: i64) -> Result<(), MyError> {
     let token =
         Contract::from_json(
-            web3.eth(),
+            common.web3.eth(),
             common.addresses.token,
             include_bytes!("../../artifacts/contracts/Token.sol/Token.json"),
         )?;
@@ -137,16 +137,16 @@ pub struct ConfirmPaymentForm {
     bid_date: String,
 }
 
-async fn fiat_to_crypto(web3: &Web3<Http>, common: &Common, fiat_amount: i64) -> Result<i64, MyError> {
+async fn fiat_to_crypto(common: &Common, fiat_amount: i64) -> Result<i64, MyError> {
     let price_oracle =
         Contract::from_json(
-            web3.eth(),
+            common.web3.eth(),
             common.addresses.collateral_oracle,
             include_bytes!("../../artifacts/@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json"),
         )?;
 
     // TODO: Query `decimals` only once.
-    let accounts = web3.eth().accounts().await?;
+    let accounts = common.web3.eth().accounts().await?;
     let decimals = price_oracle.query("decimals", (accounts[0],), None, Options::default(), None).await?;
     let (
         _round_id,
@@ -164,8 +164,6 @@ async fn fiat_to_crypto(web3: &Web3<Http>, common: &Common, fiat_amount: i64) ->
 // FIXME: Both this and /create-payment-intent only for authenticated and KYC-verified users.
 #[post("/confirm-payment")]
 pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::Data<Common>) -> Result<impl Responder, MyError> {
-    // let stripe_client = stripe::Client::new(&common.config.stripe.secret_key);
-
     let client = reqwest::Client::builder()
         .user_agent(crate::APP_USER_AGENT)
         .build()?;
@@ -188,7 +186,7 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
         finalize_payment(form.payment_intent_id.as_str(), common.get_ref()).await?;
         insert_into(txs).values(&(
             // user_id.eq(??), // FIXME
-            eth_account.eq(<H160>::from_str(&form.crypto_account)?.as_bytes()),
+            eth_account.eq(<Address>::from_str(&form.crypto_account)?.as_bytes()),
             usd_amount.eq(fiat_amount),
             crypto_amount.eq(collateral_amount),
             bid_date.eq(DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp()),
@@ -200,13 +198,15 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
     Ok(HttpResponse::Ok().append_header((CONTENT_TYPE, "application/json")).body("{}"))
 }
 
-async fn exchange_item(item: crate::schema::txs::dsl::txs, common: &Common) -> Result<(), MyError> {
+async fn exchange_item(item: crate::models::Tx, common: &Common) -> Result<(), MyError> {
     // FIXME: Add transaction
-    do_exchange(&common.web3,
-                common,
-                x,
-                y,
-                collateral_amount).await?;
-    lock_funds(-collateral_amount)?;
+    let naive = NaiveDateTime::from_timestamp(item.bid_date, 0);
+    do_exchange(
+        common,
+        (<&[u8; 20]>::try_from(item.eth_account.as_slice())?).into(),
+        DateTime::from_utc(naive, Utc),
+        item.crypto_amount
+    ).await?;
+    lock_funds(-item.usd_amount)?;
     Ok(())
 }
