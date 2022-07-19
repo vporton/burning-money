@@ -140,8 +140,6 @@ async fn main() -> Result<(), MyError> {
     };
 
     let factory = move || {
-        // let config = &config;
-        // let common = &common;
         let cors = Cors::default() // Construct CORS middleware builder
             .allowed_origin(&config2.frontend_url_prefix)
             .supports_credentials();
