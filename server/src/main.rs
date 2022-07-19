@@ -149,7 +149,7 @@ async fn main() -> Result<(), MyError> {
         use crate::schema::global::dsl::*;
         // FIXME: transaction
         let v_free_funds = global.select(free_funds).for_update().first::<i64>(&mut *common.db.lock().await).optional()?;
-        if let Some(v_free_funds) = v_free_funds {
+        if let Some(_v_free_funds) = v_free_funds {
             update(global).set(free_funds.eq(funds)).execute(&mut *common.db.lock().await)?;
         } else {
             insert_into(global).values(free_funds.eq(funds)).execute(&mut *common.db.lock().await)?;
