@@ -2506,6 +2506,7 @@ dependencies = [
  "env_logger",
  "ethcontract",
  "ethers-core",
+ "futures",
  "lambda-web",
  "lazy_static",
  "log",

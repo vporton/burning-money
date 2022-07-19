@@ -1,5 +1,4 @@
-extern crate core;
-
+use futures::stream::StreamExt;
 use std::collections::HashSet;
 use diesel::OptionalExtension;
 use tokio::sync::Mutex;
@@ -9,6 +8,7 @@ use std::fs::OpenOptions;
 use std::io::{Read, Write};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::{SessionMiddleware, storage::CookieSessionStore};
@@ -23,15 +23,16 @@ use secp256k1::SecretKey;
 use serde_json::Value;
 use web3::signing::{Key, SecretKeyRef};
 use web3::transports::Http;
-use web3::types::{Address, H256};
+use web3::types::{Address, BlockId, H256};
 use web3::Web3;
 use diesel::QueryDsl;
 use diesel::ExpressionMethods;
-use web3::api::Eth;
+use web3::api::{Eth, Namespace};
 use tokio::spawn;
 use web3::api::EthFilter;
 use crate::errors::MyError;
 use crate::pages::{about_us, not_found};
+use crate::sql_types::TxsStatusType;
 use crate::stripe::{create_payment_intent, stripe_public_key};
 use crate::user::{user_identity, user_login, user_register};
 
@@ -164,10 +165,30 @@ async fn main() -> Result<(), MyError> {
     }
 
     spawn((move || async move {
-        // loop {
-        //     let filter = Eth::new_block_filter(&common.web3.eth()).await?;
-        //     // TODO
-        // }
+        loop {
+            // FIXME: Make pauses.
+            let eth = EthFilter::new(common.web3.transport());
+            let filter = eth.create_blocks_filter().await?;
+            let mut stream = Box::pin(filter.stream(Duration::from_millis(2000))); // TODO
+            loop {
+                // FIXME: What to do on errors?
+                if let Some(block_hash) = stream.next().await {
+                    let block_hash = block_hash?;
+                    if let Some(block) = common.web3.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
+                        for tx in block.transactions {
+                            if common.transactions_awaited.lock().await.remove(&tx) {
+                                use crate::schema::txs::dsl::*;
+                                update(txs.filter(tx_id.eq(tx.as_bytes())))
+                                    .set((status.eq(TxsStatusType::Confirmed), tx_id.eq(tx.as_bytes())))
+                                    .execute(&mut *common.db.lock().await)?;
+                            }
+                        }
+                    }
+                }
+            }
+            // TODO
+        }
+        #[allow(unreachable_code)]
         Ok::<_, MyError>(())
     })());
 
