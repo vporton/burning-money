@@ -1,7 +1,9 @@
+use std::sync::Arc;
 use actix_identity::Identity;
 use actix_web::{get, post, HttpMessage, HttpRequest, Responder, web, HttpResponse};
 use diesel::{ExpressionMethods, insert_into, QueryDsl, RunQueryDsl};
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
 use crate::{Common, MyError};
 use crate::errors::AuthenticationFailedError;
 
@@ -33,7 +35,7 @@ pub struct User {
 }
 
 #[post("/register")]
-pub async fn user_register(request: HttpRequest, info: web::Form<User>, common: web::Data<Common>)
+pub async fn user_register(request: HttpRequest, info: web::Form<User>, common: web::Data<Arc<Mutex<Common>>>)
     -> Result<impl Responder, MyError>
 {
     // FIXME: Check email.
@@ -49,7 +51,7 @@ pub async fn user_register(request: HttpRequest, info: web::Form<User>, common: 
         )
     )
         .returning(id)
-        .get_result(&mut *common.db.lock().await)?;
+        .get_result(&mut common.lock().await.db)?;
     Identity::login(&request.extensions(), format!("{}", v_id))?;
     Ok(web::Json(""))
 }
@@ -61,12 +63,12 @@ pub struct Login {
 }
 
 #[post("/login")]
-pub async fn user_login(request: HttpRequest, info: web::Form<Login>, common: web::Data<Common>) -> Result<impl Responder, MyError> {
+pub async fn user_login(request: HttpRequest, info: web::Form<Login>, common: web::Data<Arc<Mutex<Common>>>) -> Result<impl Responder, MyError> {
     use crate::schema::users::dsl::*;
     let (v_id, v_password) = users
         .filter(email.eq(info.email.clone()))
         .select((id, password))
-        .get_result::<(i64, String)>(&mut *common.db.lock().await)?;
+        .get_result::<(i64, String)>(&mut common.lock().await.db)?;
     if v_password != info.password {
         return Err(AuthenticationFailedError::new().into());
     }

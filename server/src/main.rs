@@ -24,12 +24,13 @@ use serde_json::Value;
 use web3::signing::{Key, SecretKeyRef};
 use web3::transports::Http;
 use web3::types::{Address, BlockId, H256};
-use web3::Web3;
+use web3::{block_on, Web3};
 use diesel::QueryDsl;
 use diesel::ExpressionMethods;
+use log::error;
 use web3::api::{Eth, Namespace};
 use tokio::spawn;
-use tokio_scoped::scoped;
+use tokio_scoped::{scope, scoped};
 use web3::api::EthFilter;
 use crate::errors::MyError;
 use crate::models::Tx;
@@ -85,15 +86,17 @@ struct Addresses {
     collateral_oracle: Address,
 }
 
-#[derive(Clone)]
-pub struct Common {
+pub struct CommonReadonly {
     config: Config,
-    db: Arc<Mutex<PgConnection>>,
-    ethereum_key: Arc<secp256k1::SecretKey>,
+    ethereum_key: Arc<SecretKey>,
     addresses: Addresses,
     web3: Web3<Http>,
-    transactions_awaited: Arc<Mutex<HashSet<H256>>>,
-    notify_transaction: Arc<Notify>,
+}
+
+pub struct Common {
+    db: PgConnection,
+    transactions_awaited: HashSet<H256>,
+    notify_transaction: Notify,
 }
 
 #[derive(Parser)]
@@ -138,10 +141,10 @@ async fn main() -> Result<(), MyError> {
     let addresses = addresses.get(&config.ethereum_network).unwrap(); // TODO: unwrap()
 
     let transport = Http::new(&config2.ethereum_endpoint)?;
-    let transport2 = transport.clone();
-    let common = Common {
+    let transport2 = &transport.clone();
+
+    let readonly = CommonReadonly {
         config,
-        db: Arc::new(Mutex::new(PgConnection::establish(config2.database.url.as_str())?)),
         ethereum_key: Arc::new(eth_account),
         addresses: Addresses {
             // TODO: `expect()`
@@ -151,34 +154,43 @@ async fn main() -> Result<(), MyError> {
         web3: {
             Web3::new(transport)
         },
-        transactions_awaited: Arc::new(Mutex::new(HashSet::new())),
-        notify_transaction: Arc::new(Notify::new()),
     };
-    let web32 = common.web3.clone(); // TODO: right way?
+    let common = Arc::new(Mutex::new(Common {
+        db: PgConnection::establish(config2.database.url.as_str())?,
+        transactions_awaited: HashSet::new(),
+        notify_transaction: Notify::new(),
+    }));
 
-    let funds = common.web3.eth().balance(
-         SecretKeyRef::new(&common.ethereum_key).address(), None).await?;
+    let funds = readonly.web3.eth().balance(
+         SecretKeyRef::new(&readonly.ethereum_key).address(), None).await?;
     let funds = funds.as_u64() as i64;
     { // block
         use crate::schema::global::dsl::*;
         // FIXME: transaction
-        let v_free_funds = global.select(free_funds).for_update().first::<i64>(&mut *common.db.lock().await).optional()?;
+        let v_free_funds = global.select(free_funds).for_update().first::<i64>(&mut common.lock().await.db).optional()?;
         if let Some(_v_free_funds) = v_free_funds {
-            update(global).set(free_funds.eq(funds)).execute(&mut *common.db.lock().await)?;
+            update(global).set(free_funds.eq(funds)).execute(&mut common.lock().await.db)?;
         } else {
-            insert_into(global).values(free_funds.eq(funds)).execute(&mut *common.db.lock().await)?;
+            insert_into(global).values(free_funds.eq(funds)).execute(&mut common.lock().await.db)?;
         }
     }
 
-    // TODO: Initialize common.transactions_awaited from DB.
-    let transactions_awaited2 = common.transactions_awaited.clone();
-    let db2 = common.db.clone();
-    spawn((move || async move {
-        let txs_iter = {
-            use crate::schema::txs::dsl::*;
-            txs.filter(status.eq(TxsStatusType::Created))
-                .load(&mut *common.db.lock().await)?
-                .into_iter()
+    // let transactions_awaited2 = common.clone().transactions_awaited;
+    // let db2 = common.db.clone();
+    let common2 = common.clone();
+    let readonly = Arc::new(readonly); // needed?
+    let readonly2 = readonly.clone();
+    let web32 = &readonly2.web3; // TODO: right way?
+    scope(|scope| {
+        // TODO: Initialize common.transactions_awaited from DB.
+        let common2 = &common2; // needed?
+        let readonly2 = &readonly2; // needed?
+        let my_loop = (move || async move {
+            let txs_iter = {
+                use crate::schema::txs::dsl::*;
+                txs.filter(status.eq(TxsStatusType::Created))
+                    .load(&mut common2.lock().await.db)?
+                    .into_iter()
                 // .map(|(id, user_id, eth_account, usd_amount, crypto_amount, bid_date, status, tx_id)| // FIXME
                 //      Tx {
                 //         id,
@@ -190,75 +202,90 @@ async fn main() -> Result<(), MyError> {
                 //         tx_id,
                 //     }
                 // )
-        };
-        for tx in txs_iter {
-            exchange_item(tx, &common);
-        }
-        loop { // TODO: Interrupt loop on exit.
-            // FIXME: Make pauses.
-            let eth = EthFilter::new(transport2.clone());
-            let filter = eth.create_blocks_filter().await?;
-            let mut stream = Box::pin(filter.stream(Duration::from_millis(2000))); // TODO
-            loop {
-                let transactions_awaited = transactions_awaited2.clone();
-                // FIXME: What to do on errors?
-                if let Some(block_hash) = stream.next().await {
-                    let block_hash = block_hash?;
-                    if let Some(block) = web32.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
-                        for tx in block.transactions {
-                            if transactions_awaited.lock().await.remove(&tx) {
-                                use crate::schema::txs::dsl::*;
-                                update(txs.filter(tx_id.eq(tx.as_bytes())))
-                                    .set((status.eq(TxsStatusType::Confirmed), tx_id.eq(tx.as_bytes())))
-                                    .execute(&mut *db2.lock().await)?;
+            };
+            for tx in txs_iter {
+                exchange_item(tx, common2, readonly2);
+            }
+            loop { // TODO: Interrupt loop on exit.
+                // FIXME: Make pauses.
+                let eth = EthFilter::new(transport2.clone());
+                let filter = eth.create_blocks_filter().await?;
+                let mut stream = Box::pin(filter.stream(Duration::from_millis(2000))); // TODO
+                loop {
+                    let common = common2.clone();
+                    // FIXME: What to do on errors?
+                    if let Some(block_hash) = stream.next().await {
+                        let block_hash = block_hash?;
+                        if let Some(block) = web32.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
+                            for tx in block.transactions {
+                                if common.lock().await.transactions_awaited.remove(&tx) { // FIXME: locks for too long?
+                                    use crate::schema::txs::dsl::*;
+                                    update(txs.filter(tx_id.eq(tx.as_bytes())))
+                                        .set((status.eq(TxsStatusType::Confirmed), tx_id.eq(tx.as_bytes())))
+                                        .execute(&mut common.lock().await.db)?;
+                                }
                             }
                         }
+                    } else {
+                        break;
                     }
-                } else {
-                    break;
+                }
+                common2.lock().await.notify_transaction.notified().await; // FIXME: It locks for too long.
+            }
+            #[allow(unreachable_code)]
+            Ok::<_, MyError>(())
+        });
+        scope.spawn(async move {
+            loop {
+                if let Err(err) = my_loop().await {
+                    error!("Error processing transactions: {}", err);
                 }
             }
-            common.notify_transaction.notified().await;
-        }
-        #[allow(unreachable_code)]
-        Ok::<_, MyError>(())
-    })());
+        });
 
-    let factory = move || {
-        let cors = Cors::default() // Construct CORS middleware builder
-            .allowed_origin(&config2.frontend_url_prefix)
-            .supports_credentials();
-        let mother_hash = cookie::Key::from(config2.secrets.mother_hash.clone().as_bytes());
-        App::new()
-            .wrap(IdentityMiddleware::default())
-            .wrap(SessionMiddleware::builder(CookieSessionStore::default(), mother_hash)
-                  .cookie_secure(false) // TODO: only when testing
-                  .build())
-            .wrap(cors)
-            // .app_data(Data::new(config2.clone()))
-            .app_data(Data::new(common.clone()))
-            .service(user_identity)
-            .service(user_register)
-            .service(user_login)
-            // .service(user_logout) // TODO
-            .service(about_us)
-            .service(stripe_public_key)
-            .service(create_payment_intent)
-            .service(
-                actix_files::Files::new("/media", "media").use_last_modified(true),
-            )
-            .default_service(
-                web::route().to(not_found)
-            )
-    };
+        let factory = move || {
+            let cors = Cors::default() // Construct CORS middleware builder
+                .allowed_origin(&config2.frontend_url_prefix)
+                .supports_credentials();
+            let mother_hash = cookie::Key::from(config2.secrets.mother_hash.clone().as_bytes());
+            App::new()
+                .wrap(IdentityMiddleware::default())
+                .wrap(SessionMiddleware::builder(CookieSessionStore::default(), mother_hash)
+                    .cookie_secure(false) // TODO: only when testing
+                    .build())
+                .wrap(cors)
+                // .app_data(Data::new(config2.clone()))
+                .app_data(Data::new(common.clone()))
+                .app_data(Data::new(readonly2.clone()))
+                .service(user_identity)
+                .service(user_register)
+                .service(user_login)
+                // .service(user_logout) // TODO
+                .service(about_us)
+                .service(stripe_public_key)
+                .service(create_payment_intent)
+                .service(
+                    actix_files::Files::new("/media", "media").use_last_modified(true),
+                )
+                .default_service(
+                    web::route().to(not_found)
+                )
+        };
 
-    if is_running_on_lambda() {
-        run_actix_on_lambda(factory).await?; // Run on AWS Lambda. // TODO
-    } else {
-        HttpServer::new(factory)
-            .bind((config2.host.as_str(), config2.port))?
-            .run()
-            .await?;
-    }
+        block_on((move || async move { // FIXME: Does it block?
+            if is_running_on_lambda() {
+                // run_actix_on_lambda(factory).await?; // Run on AWS Lambda. // TODO
+            } else {
+                if let Err(err) = HttpServer::new(factory)
+                    .bind((config2.host.as_str(), config2.port))?
+                    .run()
+                    .await
+                {
+                    error!("Error running HTTP server: {}", err);
+                }
+            }
+            Ok::<_, MyError>(())
+        })());
+    });
     Ok(())
 }
