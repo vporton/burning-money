@@ -27,7 +27,7 @@ pub async fn user_identity(user: Option<Identity>) -> impl Responder {
 
 #[derive(Clone, Deserialize)]
 pub struct User {
-    id: Option<u64>,
+    // id: Option<u64>,
     first_name: String,
     last_name: String,
     email: String,
