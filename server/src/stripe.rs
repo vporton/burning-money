@@ -11,7 +11,6 @@ use diesel::{insert_into, RunQueryDsl};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use web3::contract::{Contract, Options};
-use web3::signing::{Key, SecretKeyRef};
 use diesel::QueryDsl;
 use tokio::sync::Mutex;
 use crate::{Common, CommonReadonly, MyError};

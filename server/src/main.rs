@@ -17,7 +17,7 @@ use actix_web::web::Data;
 use env_logger::TimestampPrecision;
 use clap::Parser;
 use diesel::{Connection, insert_into, PgConnection, RunQueryDsl, update};
-use lambda_web::{is_running_on_lambda, run_actix_on_lambda};
+use lambda_web::{is_running_on_lambda};
 use rand::thread_rng;
 use secp256k1::SecretKey;
 use serde_json::Value;
@@ -28,12 +28,10 @@ use web3::{block_on, Web3};
 use diesel::QueryDsl;
 use diesel::ExpressionMethods;
 use log::error;
-use web3::api::{Eth, Namespace};
-use tokio::spawn;
-use tokio_scoped::{scope, scoped};
+use web3::api::Namespace;
+use tokio_scoped::scope;
 use web3::api::EthFilter;
 use crate::errors::MyError;
-use crate::models::Tx;
 use crate::pages::{about_us, not_found};
 use crate::sql_types::TxsStatusType;
 use crate::stripe::{create_payment_intent, exchange_item, stripe_public_key};
@@ -175,7 +173,7 @@ async fn main() -> Result<(), MyError> {
                 insert_into(global).values(free_funds.eq(funds)).execute(conn)?;
             }
             Ok(())
-        });
+        })?;
     }
 
     let readonly = Arc::new(readonly);
@@ -185,7 +183,7 @@ async fn main() -> Result<(), MyError> {
     let readonly2 = &readonly2; // needed?
     scope(|scope| {
         // TODO: Initialize common.transactions_awaited from DB.
-        let my_loop = (move || async move {
+        let my_loop = move || async move {
             let txs_iter = {
                 use crate::schema::txs::dsl::*;
                 txs.filter(status.eq(TxsStatusType::Created))
@@ -193,7 +191,7 @@ async fn main() -> Result<(), MyError> {
                     .into_iter()
             };
             for tx in txs_iter {
-                exchange_item(tx, common2, readonly2);
+                exchange_item(tx, common2, readonly2).await?;
             }
             loop { // TODO: Interrupt loop on exit.
                 let eth = EthFilter::new(transport2.clone());
@@ -223,7 +221,7 @@ async fn main() -> Result<(), MyError> {
             }
             #[allow(unreachable_code)]
             Ok::<_, MyError>(())
-        });
+        };
         scope.spawn(async move {
             loop {
                 if let Err(err) = my_loop().await {
@@ -274,7 +272,8 @@ async fn main() -> Result<(), MyError> {
                 }
             }
             Ok::<_, MyError>(())
-        })());
-    });
+        })())?;
+        Ok::<_, MyError>(())
+    })?;
     Ok(())
 }
