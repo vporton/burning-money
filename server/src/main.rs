@@ -188,23 +188,11 @@ async fn main() -> Result<(), MyError> {
                 txs.filter(status.eq(TxsStatusType::Created))
                     .load(&mut common2.lock().await.db)?
                     .into_iter()
-                // .map(|(id, user_id, eth_account, usd_amount, crypto_amount, bid_date, status, tx_id)| // FIXME
-                //      Tx {
-                //         id,
-                //         user_id,
-                //         eth_account,
-                //         usd_amount,
-                //         crypto_amount,
-                //         bid_date,
-                //         tx_id,
-                //     }
-                // )
             };
             for tx in txs_iter {
                 exchange_item(tx, common2, readonly2);
             }
             loop { // TODO: Interrupt loop on exit.
-                // FIXME: Make pauses.
                 let eth = EthFilter::new(transport2.clone());
                 let filter = eth.create_blocks_filter().await?;
                 let mut stream = Box::pin(filter.stream(Duration::from_millis(2000))); // TODO
