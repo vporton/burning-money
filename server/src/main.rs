@@ -134,6 +134,8 @@ async fn main() -> Result<(), MyError> {
     let addresses: Value = serde_json::from_str(fs::read_to_string(config.addresses_file.as_str())?.as_str())?;
     let addresses = addresses.get(&config.ethereum_network).unwrap(); // TODO: unwrap()
 
+    let transport = Http::new(&config2.ethereum_endpoint)?;
+    let transport2 = transport.clone();
     let common = Common {
         config,
         db: Arc::new(Mutex::new(PgConnection::establish(config2.database.url.as_str())?)),
@@ -144,11 +146,11 @@ async fn main() -> Result<(), MyError> {
             collateral_oracle:  <Address>::from_str(addresses.get("collateralOracle").expect("Can't parse addresses file").as_str().expect("Can't parse addresses file"))?,
         },
         web3: {
-            let transport = Http::new(&config2.ethereum_endpoint)?;
             Web3::new(transport)
         },
         transactions_awaited: Arc::new(Mutex::new(HashSet::new())),
     };
+    let web32 = common.web3.clone(); // TODO: right way?
 
     let funds = common.web3.eth().balance(
          SecretKeyRef::new(&common.ethereum_key).address(), None).await?;
@@ -165,10 +167,11 @@ async fn main() -> Result<(), MyError> {
     }
 
     let transactions_awaited2 = common.transactions_awaited.clone();
+    let db2 = common.db.clone();
     spawn((move || async move {
-        loop {
+        loop { // TODO: Interrupt loop on exit.
             // FIXME: Make pauses.
-            let eth = EthFilter::new(common.web3.transport());
+            let eth = EthFilter::new(transport2.clone());
             let filter = eth.create_blocks_filter().await?;
             let mut stream = Box::pin(filter.stream(Duration::from_millis(2000))); // TODO
             loop {
@@ -176,13 +179,13 @@ async fn main() -> Result<(), MyError> {
                 // FIXME: What to do on errors?
                 if let Some(block_hash) = stream.next().await {
                     let block_hash = block_hash?;
-                    if let Some(block) = common.web3.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
+                    if let Some(block) = web32.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
                         for tx in block.transactions {
                             if transactions_awaited.lock().await.remove(&tx) {
                                 use crate::schema::txs::dsl::*;
                                 update(txs.filter(tx_id.eq(tx.as_bytes())))
                                     .set((status.eq(TxsStatusType::Confirmed), tx_id.eq(tx.as_bytes())))
-                                    .execute(&mut *common.db.lock().await)?;
+                                    .execute(&mut *db2.lock().await)?;
                             }
                         }
                     }
