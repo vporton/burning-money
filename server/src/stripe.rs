@@ -3,6 +3,7 @@ use web3::types::*;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
+use actix_identity::Identity;
 use actix_web::{get, post, Responder, web, HttpResponse};
 use actix_web::http::header::CONTENT_TYPE;
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -14,7 +15,7 @@ use web3::contract::{Contract, Options};
 use diesel::QueryDsl;
 use tokio::sync::Mutex;
 use crate::{Common, CommonReadonly, MyError};
-use crate::errors::NotEnoughFundsError;
+use crate::errors::{AuthenticationFailedError, NotEnoughFundsError};
 use crate::sql_types::TxsStatusType;
 
 // We follow https://stripe.com/docs/payments/finalize-payments-on-the-server
@@ -66,16 +67,31 @@ pub async fn stripe_public_key(readonly: web::Data<CommonReadonly>) -> impl Resp
 }
 
 #[post("/create-payment-intent")]
-pub async fn create_payment_intent(q: web::Query<CreateStripeCheckout>, readonly: web::Data<CommonReadonly>) -> Result<impl Responder, MyError> {
+pub async fn create_payment_intent(
+    q: web::Query<CreateStripeCheckout>,
+    ident: Identity,
+    common: web::Data<Arc<Mutex<Common>>>,readonly: web::Data<CommonReadonly>
+) -> Result<impl Responder, MyError> {
+    { // block
+        use crate::schema::users::dsl::*;
+        let v_passed_kyc: bool = users.filter(id.eq(ident.id()?.parse::<i64>()?))
+            .select(passed_kyc)
+            .get_result(&mut common.lock().await.db)?;
+        if !v_passed_kyc {
+            return Err(AuthenticationFailedError::new().into()); // TODO: more specific error
+        }
+    }
     let client = reqwest::Client::builder()
         .user_agent(crate::APP_USER_AGENT)
         .build()?;
     let mut params = HashMap::new();
     let fiat_amount = q.fiat_amount.to_string();
+    let user_id = ident.id()?;
     params.insert("amount", fiat_amount.as_str());
     params.insert("currency", "usd");
     params.insert("automatic_payment_methods[enabled]", "true");
     params.insert("secret_key_confirmation", "required");
+    params.insert("metadata[user]", user_id.as_str());
     let res = client.post("https://api.stripe.com/v1/payment_intents")
         .basic_auth::<&str, &str>(&readonly.config.stripe.secret_key, None)
         .header("Stripe-Version", "2020-08-27; server_side_confirmation_beta=v1")
@@ -179,6 +195,7 @@ async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Res
 #[post("/confirm-payment")]
 pub async fn confirm_payment(
     form: web::Form<ConfirmPaymentForm>,
+    ident: Identity,
     common: web::Data<Arc<Mutex<Common>>>,
     readonly: web::Data<CommonReadonly>,
 ) -> Result<impl Responder, MyError> {
@@ -190,6 +207,9 @@ pub async fn confirm_payment(
         .basic_auth::<&str, &str>(&readonly.config.stripe.secret_key, None)
         .send().await?
         .json().await?;
+    if intent.get("metadata[user]").unwrap().as_str().unwrap() != ident.id()? { // TODO: unwrap()
+        return Err(AuthenticationFailedError::new().into());
+    }
 
     if intent.get("currency").unwrap().as_str() != Some("usd") { // TODO: unwrap()
         return Ok(HttpResponse::BadRequest().body("Wrong currency")); // TODO: JSON

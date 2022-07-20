@@ -1,6 +1,7 @@
 use std::array::TryFromSliceError;
 use std::fmt::{Display, Formatter};
 use std::io;
+use std::num::ParseIntError;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use actix_web::http::header::ContentType;
@@ -80,6 +81,7 @@ pub enum MyError {
     Web3Contract(web3::contract::Error),
     ArrayLength(TryFromSliceError),
     NotEnoughFunds(NotEnoughFundsError),
+    ParseInt(ParseIntError),
 }
 
 #[derive(Serialize)]
@@ -141,6 +143,7 @@ impl Display for MyError {
             Self::Web3Contract(err) => write!(f, "Web3 contract error: {}", err),
             Self::ArrayLength(err) => write!(f, "Array length error: {}", err),
             Self::NotEnoughFunds(_) => write!(f, "Not enough funds."),
+            Self::ParseInt(_) => write!(f, "Cannot parse integer."),
         }
     }
 }
@@ -286,5 +289,11 @@ impl From<TryFromSliceError> for MyError {
 impl From<NotEnoughFundsError> for MyError {
     fn from(value: NotEnoughFundsError) -> Self {
         Self::NotEnoughFunds(value)
+    }
+}
+
+impl From<ParseIntError> for MyError {
+    fn from(value: ParseIntError) -> Self {
+        Self::ParseInt(value)
     }
 }
