@@ -204,6 +204,7 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
                 bid_date.eq(DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp()),
             ))
                 .execute(&mut *common.db.lock().await)?;
+            common.notify_transaction.notify_one();
         }
         "canceled" => {
             lock_funds(&**common, -fiat_amount).await?;
@@ -213,7 +214,7 @@ pub async fn confirm_payment(form: web::Form<ConfirmPaymentForm>, common: web::D
     Ok(HttpResponse::Ok().append_header((CONTENT_TYPE, "application/json")).body("{}"))
 }
 
-async fn exchange_item(item: crate::models::Tx, common: &Common) -> Result<(), MyError> {
+pub async fn exchange_item(item: crate::models::Tx, common: &Common) -> Result<(), MyError> {
     lock_funds(common, -item.usd_amount).await?;
     let naive = NaiveDateTime::from_timestamp(item.bid_date, 0);
     let tx = do_exchange(

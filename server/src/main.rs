@@ -1,7 +1,7 @@
 use futures::stream::StreamExt;
 use std::collections::HashSet;
 use diesel::OptionalExtension;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Notify};
 use serde_derive::Deserialize;
 use std::fs;
 use std::fs::OpenOptions;
@@ -29,11 +29,13 @@ use diesel::QueryDsl;
 use diesel::ExpressionMethods;
 use web3::api::{Eth, Namespace};
 use tokio::spawn;
+use tokio_scoped::scoped;
 use web3::api::EthFilter;
 use crate::errors::MyError;
+use crate::models::Tx;
 use crate::pages::{about_us, not_found};
 use crate::sql_types::TxsStatusType;
-use crate::stripe::{create_payment_intent, stripe_public_key};
+use crate::stripe::{create_payment_intent, exchange_item, stripe_public_key};
 use crate::user::{user_identity, user_login, user_register};
 
 mod pages;
@@ -91,6 +93,7 @@ pub struct Common {
     addresses: Addresses,
     web3: Web3<Http>,
     transactions_awaited: Arc<Mutex<HashSet<H256>>>,
+    notify_transaction: Arc<Notify>,
 }
 
 #[derive(Parser)]
@@ -149,6 +152,7 @@ async fn main() -> Result<(), MyError> {
             Web3::new(transport)
         },
         transactions_awaited: Arc::new(Mutex::new(HashSet::new())),
+        notify_transaction: Arc::new(Notify::new()),
     };
     let web32 = common.web3.clone(); // TODO: right way?
 
@@ -166,9 +170,30 @@ async fn main() -> Result<(), MyError> {
         }
     }
 
+    // TODO: Initialize common.transactions_awaited from DB.
     let transactions_awaited2 = common.transactions_awaited.clone();
     let db2 = common.db.clone();
     spawn((move || async move {
+        let txs_iter = {
+            use crate::schema::txs::dsl::*;
+            txs.filter(status.eq(TxsStatusType::Created))
+                .load(&mut *common.db.lock().await)?
+                .into_iter()
+                // .map(|(id, user_id, eth_account, usd_amount, crypto_amount, bid_date, status, tx_id)| // FIXME
+                //      Tx {
+                //         id,
+                //         user_id,
+                //         eth_account,
+                //         usd_amount,
+                //         crypto_amount,
+                //         bid_date,
+                //         tx_id,
+                //     }
+                // )
+        };
+        for tx in txs_iter {
+            exchange_item(tx, &common);
+        }
         loop { // TODO: Interrupt loop on exit.
             // FIXME: Make pauses.
             let eth = EthFilter::new(transport2.clone());
@@ -189,9 +214,11 @@ async fn main() -> Result<(), MyError> {
                             }
                         }
                     }
+                } else {
+                    break;
                 }
             }
-            // TODO
+            common.notify_transaction.notified().await;
         }
         #[allow(unreachable_code)]
         Ok::<_, MyError>(())
