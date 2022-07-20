@@ -175,16 +175,13 @@ async fn main() -> Result<(), MyError> {
         }
     }
 
-    // let transactions_awaited2 = common.clone().transactions_awaited;
-    // let db2 = common.db.clone();
+    let readonly = Arc::new(readonly);
     let common2 = common.clone();
-    let readonly = Arc::new(readonly); // needed?
     let readonly2 = readonly.clone();
-    let web32 = &readonly2.web3; // TODO: right way?
+    let common2 = &common2; // needed?
+    let readonly2 = &readonly2; // needed?
     scope(|scope| {
         // TODO: Initialize common.transactions_awaited from DB.
-        let common2 = &common2; // needed?
-        let readonly2 = &readonly2; // needed?
         let my_loop = (move || async move {
             let txs_iter = {
                 use crate::schema::txs::dsl::*;
@@ -211,12 +208,13 @@ async fn main() -> Result<(), MyError> {
                 let eth = EthFilter::new(transport2.clone());
                 let filter = eth.create_blocks_filter().await?;
                 let mut stream = Box::pin(filter.stream(Duration::from_millis(2000))); // TODO
+                let readonly = readonly2.clone();
                 loop {
                     let common = common2.clone();
                     // FIXME: What to do on errors?
                     if let Some(block_hash) = stream.next().await {
                         let block_hash = block_hash?;
-                        if let Some(block) = web32.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
+                        if let Some(block) = readonly.web3.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
                             for tx in block.transactions {
                                 if common.lock().await.transactions_awaited.remove(&tx) { // FIXME: locks for too long?
                                     use crate::schema::txs::dsl::*;
@@ -256,7 +254,7 @@ async fn main() -> Result<(), MyError> {
                 .wrap(cors)
                 // .app_data(Data::new(config2.clone()))
                 .app_data(Data::new(common.clone()))
-                .app_data(Data::new(readonly2.clone()))
+                .app_data(Data::new(readonly.clone()))
                 .service(user_identity)
                 .service(user_register)
                 .service(user_login)
