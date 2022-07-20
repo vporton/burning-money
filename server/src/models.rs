@@ -11,6 +11,6 @@ pub struct Tx {
     pub usd_amount: i64,
     pub crypto_amount: i64,
     pub bid_date: i64,
-    pub status: TxsStatusType, // FIXME: Uncomment.
-    pub tx_id: Vec<u8>, // FIXME: wrong length
+    pub status: TxsStatusType,
+    pub tx_id: Vec<u8>,
 }

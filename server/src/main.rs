@@ -166,13 +166,16 @@ async fn main() -> Result<(), MyError> {
     let funds = funds.as_u64() as i64;
     { // block
         use crate::schema::global::dsl::*;
-        // FIXME: transaction
-        let v_free_funds = global.select(free_funds).for_update().first::<i64>(&mut common.lock().await.db).optional()?;
-        if let Some(_v_free_funds) = v_free_funds {
-            update(global).set(free_funds.eq(funds)).execute(&mut common.lock().await.db)?;
-        } else {
-            insert_into(global).values(free_funds.eq(funds)).execute(&mut common.lock().await.db)?;
-        }
+        let conn = &mut common.lock().await.db;
+        conn.transaction::<_, MyError, _>(|conn| {
+            let v_free_funds = global.select(free_funds).for_update().first::<i64>(conn).optional()?;
+            if let Some(_v_free_funds) = v_free_funds {
+                update(global).set(free_funds.eq(funds)).execute(conn)?;
+            } else {
+                insert_into(global).values(free_funds.eq(funds)).execute(conn)?;
+            }
+            Ok(())
+        });
     }
 
     let readonly = Arc::new(readonly);

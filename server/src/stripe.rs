@@ -1,4 +1,4 @@
-use diesel::{ExpressionMethods, update};
+use diesel::{Connection, ExpressionMethods, update};
 use web3::types::*;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -104,13 +104,16 @@ async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly
 }
 
 async fn lock_funds(common: &Arc<Mutex<Common>>, amount: i64) -> Result<(), MyError> {
-    // FIXME: transaction
-    use crate::schema::global::dsl::*;
-    let v_free_funds = global.select(free_funds).for_update().get_result::<i64>(&mut common.lock().await.db)?;
-    if amount >= v_free_funds { // FIXME: Take gas into account.
-        return Err(NotEnoughFundsError::new().into());
-    }
-    update(global).set(free_funds.eq(free_funds - amount)).execute(&mut common.lock().await.db)?;
+    let conn = &mut common.lock().await.db;
+    conn.transaction::<_, MyError, _>(|conn| {
+        use crate::schema::global::dsl::*;
+        let v_free_funds = global.select(free_funds).for_update().get_result::<i64>(conn)?;
+        if amount >= v_free_funds { // FIXME: Take gas into account.
+            return Err(NotEnoughFundsError::new().into());
+        }
+        update(global).set(free_funds.eq(free_funds - amount)).execute(conn)?;
+        Ok(())
+    })?;
     Ok(())
 }
 
@@ -118,7 +121,6 @@ async fn lock_funds(common: &Arc<Mutex<Common>>, amount: i64) -> Result<(), MyEr
 async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bid_date: DateTime<Utc>, crypto_amount: i64)
     -> Result<H256, MyError>
 {
-    // FIXME: Add transaction.
     let token =
         Contract::from_json(
             readonly.web3.eth(),
