@@ -87,7 +87,8 @@ async fn lock_funds(common: &Arc<Mutex<Common>>, amount: i64) -> Result<(), MyEr
     conn.transaction::<_, MyError, _>(|conn| {
         use crate::schema::global::dsl::*;
         let v_free_funds = global.select(free_funds).for_update().get_result::<i64>(conn)?;
-        if amount >= v_free_funds { // FIXME: Take gas into account.
+        const MAX_GAS: i64 = 30_000_000; // TODO: less
+        if amount >= v_free_funds + MAX_GAS {
             return Err(NotEnoughFundsError::new().into());
         }
         update(global).set(free_funds.eq(free_funds - amount)).execute(conn)?;
@@ -154,8 +155,6 @@ async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Res
     Ok(fiat_amount * i64::pow(10, decimals) / answer) // FIXME: add our "tax"
 }
 
-// FIXME: Queue this to the DB for the case of interruption.
-// FIXME: Both this and /create-payment-intent only for authenticated and KYC-verified users.
 #[post("/confirm-payment")]
 pub async fn confirm_payment(
     form: web::Form<ConfirmPaymentForm>,
@@ -188,7 +187,7 @@ pub async fn confirm_payment(
             lock_funds(&common, collateral_amount).await?;
             finalize_payment(form.payment_intent_id.as_str(), &*readonly).await?;
             insert_into(txs).values(&(
-                // user_id.eq(??), // FIXME
+                user_id.eq(ident.id()?.parse::<i64>()?), // FIXME
                 eth_account.eq(<Address>::from_str(&form.crypto_account)?.as_bytes()),
                 usd_amount.eq(fiat_amount),
                 crypto_amount.eq(collateral_amount),

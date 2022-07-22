@@ -217,7 +217,7 @@ async fn main() -> Result<(), MyError> {
                         let block_hash = block_hash?;
                         if let Some(block) = readonly.web3.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
                             for tx in block.transactions {
-                                if common.lock().await.transactions_awaited.remove(&tx) { // FIXME: locks for too long?
+                                if common.lock().await.transactions_awaited.remove(&tx) {
                                     use crate::schema::txs::dsl::*;
                                     update(txs.filter(tx_id.eq(tx.as_bytes())))
                                         .set((status.eq(TxsStatusType::Confirmed), tx_id.eq(tx.as_bytes())))
