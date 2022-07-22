@@ -24,9 +24,10 @@ use serde_json::Value;
 use web3::signing::{Key, SecretKeyRef};
 use web3::transports::Http;
 use web3::types::{Address, BlockId, H256};
-use web3::{block_on, Web3};
+use web3::Web3;
 use diesel::QueryDsl;
 use diesel::ExpressionMethods;
+use futures::executor::block_on;
 use log::error;
 use web3::api::Namespace;
 use tokio_scoped::scope;
@@ -275,7 +276,7 @@ async fn main() -> Result<(), MyError> {
                 )
         };
 
-        block_on((move || async move { // FIXME: Does it block?
+        block_on((move || async move { // FIXME: Does block_on create problems?
             if is_running_on_lambda() {
                 // run_actix_on_lambda(factory).await?; // Run on AWS Lambda. // TODO
             } else {

@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use web3::contract::{Contract, Options};
 use diesel::QueryDsl;
+use futures::executor::block_on;
 use tokio::sync::Mutex;
 use crate::{Common, CommonReadonly, MyError};
 use crate::errors::{AuthenticationFailedError, NotEnoughFundsError};
@@ -61,7 +62,6 @@ pub async fn create_payment_intent(
         .header("Stripe-Version", "2020-08-27; server_side_confirmation_beta=v1")
         .form(&params)
         .send().await?;
-    // FIXME: On error (e.g. fiat_amount<100) return JSON error.
     #[derive(Deserialize, Serialize)]
     struct Data {
         id: String,
@@ -114,14 +114,6 @@ async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bi
         readonly.ethereum_key.clone(), // TODO: seems to claim that it's insecure: https://docs.rs/web3/latest/web3/signing/trait.Key.html
     ).await?;
 
-    // FIXME: wait for confirmations before writing to DB
-    // let receipt = instance
-    //     .my_important_function()
-    //     .poll_interval(Duration::from_secs(5))
-    //     .confirmations(2)
-    //     .execute_confirm()
-    //     .await?;
-
     Ok(tx)
 }
 
@@ -152,7 +144,7 @@ async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Res
     ): ([u8; 80], [u8; 256], [u8; 256], [u8; 256], [u8; 80]) =
         price_oracle.query("latestRoundData", (accounts[0],), None, Options::default(), None).await?;
     let answer = <u64>::from_le_bytes(answer[..8].try_into().unwrap()) as i64;
-    Ok(fiat_amount * i64::pow(10, decimals) / answer) // FIXME: add our "tax"
+    Ok(fiat_amount * i64::pow(10, decimals) / answer)
 }
 
 #[post("/confirm-payment")]
@@ -184,16 +176,24 @@ pub async fn confirm_payment(
             use crate::schema::txs::dsl::*;
             let collateral_amount = fiat_to_crypto(&*readonly, fiat_amount).await?;
             // FIXME: Transaction.
-            lock_funds(&common, collateral_amount).await?;
-            finalize_payment(form.payment_intent_id.as_str(), &*readonly).await?;
-            insert_into(txs).values(&(
-                user_id.eq(ident.id()?.parse::<i64>()?), // FIXME
-                eth_account.eq(<Address>::from_str(&form.crypto_account)?.as_bytes()),
-                usd_amount.eq(fiat_amount),
-                crypto_amount.eq(collateral_amount),
-                bid_date.eq(DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp()),
-            ))
-                .execute(&mut common.lock().await.db)?;
+            let conn = &mut common.lock().await.db;
+            // FIXME: web::block here and in other places.
+            conn.transaction::<_, MyError, _>(|conn| {
+                block_on((move || async move { // FIXME: It blocks the thread.
+                    lock_funds(&common, collateral_amount).await?;
+                    finalize_payment(form.payment_intent_id.as_str(), &*readonly).await?;
+                    insert_into(txs).values(&(
+                        user_id.eq(ident.id()?.parse::<i64>()?),
+                        eth_account.eq(<Address>::from_str(&form.crypto_account)?.as_bytes()),
+                        usd_amount.eq(fiat_amount),
+                        crypto_amount.eq(collateral_amount),
+                        bid_date.eq(DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp()),
+                    ))
+                        .execute(&mut common.lock().await.db)?;
+                    Ok::<_, MyError>(())
+                })());
+                Ok(())
+            });
             common.lock().await.notify_transaction_tx.send(())?;
         }
         "canceled" => {
