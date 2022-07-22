@@ -1,7 +1,7 @@
 use futures::stream::StreamExt;
 use std::collections::HashSet;
 use diesel::OptionalExtension;
-use tokio::sync::{Mutex, Notify};
+use tokio::sync::{mpsc, Mutex, Notify};
 use serde_derive::Deserialize;
 use std::fs;
 use std::fs::OpenOptions;
@@ -94,7 +94,9 @@ pub struct CommonReadonly {
 pub struct Common {
     db: PgConnection,
     transactions_awaited: HashSet<H256>,
-    notify_transaction: Notify,
+    // TODO: Unbounded?
+    notify_transaction_tx: mpsc::UnboundedSender<()>,
+    notify_transaction_rx: Arc<Mutex<mpsc::UnboundedReceiver<()>>>, // in Arc not to lock the entire struct for too long
 }
 
 #[derive(Parser)]
@@ -153,10 +155,12 @@ async fn main() -> Result<(), MyError> {
             Web3::new(transport)
         },
     };
+    let (notify_transaction_tx, notify_transaction_rx) = mpsc::unbounded_channel();
     let common = Arc::new(Mutex::new(Common {
         db: PgConnection::establish(config2.database.url.as_str())?,
         transactions_awaited: HashSet::new(),
-        notify_transaction: Notify::new(),
+        notify_transaction_tx,
+        notify_transaction_rx: Arc::new(Mutex::new(notify_transaction_rx)),
     }));
 
     let funds = readonly.web3.eth().balance(
@@ -217,7 +221,11 @@ async fn main() -> Result<(), MyError> {
                         break;
                     }
                 }
-                common2.lock().await.notify_transaction.notified().await; // FIXME: It locks for too long.
+                let rc = { // not to lock for too long
+                    let guard = common2.lock().await;
+                    guard.notify_transaction_rx.clone()
+                };
+                rc.lock().await.recv().await;
             }
             #[allow(unreachable_code)]
             Ok::<_, MyError>(())
