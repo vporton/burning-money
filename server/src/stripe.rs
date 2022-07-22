@@ -1,6 +1,8 @@
 use diesel::{Connection, ExpressionMethods, update};
 use web3::types::*;
 use std::collections::HashMap;
+use std::future::{Future, ready};
+use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::Arc;
 use actix_identity::Identity;
@@ -8,6 +10,7 @@ use actix_web::{get, post, Responder, web, HttpResponse};
 use actix_web::http::header::CONTENT_TYPE;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use diesel::{insert_into, RunQueryDsl};
+use diesel::connection::AnsiTransactionManager;
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -16,6 +19,7 @@ use diesel::QueryDsl;
 use futures::executor::block_on;
 use tokio::sync::Mutex;
 use crate::{Common, CommonReadonly, MyError};
+use crate::async_db::finish_transaction;
 use crate::errors::{AuthenticationFailedError, NotEnoughFundsError};
 use crate::sql_types::TxsStatusType;
 
@@ -38,12 +42,15 @@ pub async fn create_payment_intent(
     common: web::Data<Arc<Mutex<Common>>>,readonly: web::Data<CommonReadonly>
 ) -> Result<impl Responder, MyError> {
     { // block
+        let common = (**common).clone();
+        let v_id = ident.id()?.parse::<i64>()?;
         use crate::schema::users::dsl::*;
-        let v_passed_kyc: bool = web::block(
-            users.filter(id.eq(ident.id()?.parse::<i64>()?))
+        let v_passed_kyc: bool = web::block(move || -> Result<_, MyError> {
+            let mut common = block_on(async { common.lock().await });
+            Ok(users.filter(id.eq(v_id))
                 .select(passed_kyc)
-                .get_result(&mut common.lock().await.db)?
-        ).await?;
+                .get_result(&mut common.db)?)
+        }).await??;
         if !v_passed_kyc {
             return Err(AuthenticationFailedError::new().into()); // TODO: more specific error
         }
@@ -86,18 +93,20 @@ async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly
 
 async fn lock_funds(common: &Arc<Mutex<Common>>, amount: i64) -> Result<(), MyError> {
     let conn = &mut common.lock().await.db;
-    web::block(||
-        transaction::<_, _, MyError, _>(conn, |conn| {
-            use crate::schema::global::dsl::*;
-            let v_free_funds = web::block(|| global.select(free_funds).for_update().get_result::<i64>(conn)?).await?;
-            const MAX_GAS: i64 = 30_000_000; // TODO: less
-            if amount >= v_free_funds + MAX_GAS {
-                return Err(NotEnoughFundsError::new().into());
-            }
-            web::block(|| update(global).set(free_funds.eq(free_funds - amount)).execute(conn)?).await?;
-            Ok(())
-        })?
-    ).await?;
+    web::block(|| {
+        AnsiTransactionManager::begin_transaction(conn)?;
+    });
+    let do_it = move || async move {
+        use crate::schema::global::dsl::*;
+        let v_free_funds = web::block(|| global.select(free_funds).for_update().first(conn)?).await??;
+        const MAX_GAS: i64 = 30_000_000; // TODO: less
+        if amount >= v_free_funds + MAX_GAS {
+            return Err(NotEnoughFundsError::new().into());
+        }
+        web::block(|| Ok(update(global).set(free_funds.eq(free_funds - amount)).execute(conn)?)).await??;
+        Ok(())
+    };
+    web::block(async { finish_transaction(conn, do_it().await)? }).await?;
     Ok(())
 }
 
@@ -180,24 +189,23 @@ pub async fn confirm_payment(
             use crate::schema::txs::dsl::*;
             let collateral_amount = fiat_to_crypto(&*readonly, fiat_amount).await?;
             // FIXME: Transaction.
-            let conn = &mut common.lock().await.db;
-            web::block(||
-                transaction::<_, _, MyError, _>(conn, |conn| async move { // FIXME: It blocks the thread.
-                    lock_funds(&common, collateral_amount).await?;
-                    finalize_payment(form.payment_intent_id.as_str(), &*readonly).await?;
-                    web::block(||
-                        insert_into(txs).values(&(
-                            user_id.eq(ident.id()?.parse::<i64>()?),
-                            eth_account.eq(<Address>::from_str(&form.crypto_account)?.as_bytes()),
-                            usd_amount.eq(fiat_amount),
-                            crypto_amount.eq(collateral_amount),
-                            bid_date.eq(DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp()),
-                        ))
-                            .execute(conn)?
-                    ).await?;
-                    Ok::<_, MyError>(())
-                }())
-            ).await?;
+            let conn = &mut common.lock().await.db; // FIXME: blocks for too long, need pool.
+            let do_it = move || async move {
+                lock_funds(&common, collateral_amount).await?;
+                finalize_payment(form.payment_intent_id.as_str(), &*readonly).await?;
+                web::block(||
+                    insert_into(txs).values(&(
+                        user_id.eq(ident.id()?.parse::<i64>()?),
+                        eth_account.eq(<Address>::from_str(&form.crypto_account)?.as_bytes()),
+                        usd_amount.eq(fiat_amount),
+                        crypto_amount.eq(collateral_amount),
+                        bid_date.eq(DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp()),
+                    ))
+                        .execute(conn)?
+                ).await??;
+                Ok::<_, MyError>(())
+            };
+            finish_transaction(conn, do_it().await);
             common.lock().await.notify_transaction_tx.send(())?;
         }
         "canceled" => {
@@ -223,7 +231,7 @@ pub async fn exchange_item(item: crate::models::Tx, common: &Arc<Mutex<Common>>,
         update(txs.filter(id.eq(item.id)))
             .set((status.eq(TxsStatusType::SubmittedToBlockchain), tx_id.eq(tx.as_bytes())))
             .execute(conn)?
-    ).await?;
+    ).await??;
     common.lock().await.transactions_awaited.insert(tx);
     Ok(())
 }

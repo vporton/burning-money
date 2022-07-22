@@ -17,6 +17,7 @@ use actix_web::web::Data;
 use env_logger::TimestampPrecision;
 use clap::Parser;
 use diesel::{Connection, insert_into, PgConnection, RunQueryDsl, update};
+use diesel::connection::{AnsiTransactionManager, TransactionManager};
 use lambda_web::{is_running_on_lambda};
 use rand::thread_rng;
 use secp256k1::SecretKey;
@@ -32,6 +33,7 @@ use log::error;
 use web3::api::Namespace;
 use tokio_scoped::scope;
 use web3::api::EthFilter;
+use crate::async_db::finish_transaction;
 use crate::errors::MyError;
 use crate::pages::{about_us, not_found};
 use crate::sql_types::TxsStatusType;
@@ -179,17 +181,19 @@ async fn main() -> Result<(), MyError> {
     { // block
         use crate::schema::global::dsl::*;
         let conn = &mut common.lock().await.db;
-        conn.transaction::<_, MyError, _>(|conn| {
-            let v_free_funds = web::block(||
-                global.select(free_funds).for_update().first::<i64>(conn).optional()?
+        web::block(|| {
+            AnsiTransactionManager::begin_transaction(conn)?;
+            let do_it = || {
+                let v_free_funds = global.select(free_funds).for_update().first::<i64>(conn).optional()?;
                 if let Some(_v_free_funds) = v_free_funds {
                     update(global).set(free_funds.eq(funds)).execute(conn)?;
                 } else {
                     insert_into(global).values(free_funds.eq(funds)).execute(conn)?;
                 }
-            ).await?;
-            Ok(())
-        })?;
+                Ok::<_, MyError>(())
+            };
+            finish_transaction(do_it())?;
+        })().await??;
     }
 
     let readonly = Arc::new(readonly);
@@ -206,7 +210,7 @@ async fn main() -> Result<(), MyError> {
                     txs.filter(status.eq(TxsStatusType::Created))
                         .load(&mut common2.lock().await.db)?
                         .into_iter()
-                ).await?
+                ).await??
             };
             for tx in txs_iter {
                 exchange_item(tx, common2, readonly2).await?;
@@ -229,7 +233,7 @@ async fn main() -> Result<(), MyError> {
                                         update(txs.filter(tx_id.eq(tx.as_bytes())))
                                             .set((status.eq(TxsStatusType::Confirmed), tx_id.eq(tx.as_bytes())))
                                             .execute(&mut common.lock().await.db)?
-                                    ).await?;
+                                    ).await??;
                                 }
                             }
                         }

@@ -4,6 +4,7 @@ use std::io;
 use std::num::ParseIntError;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
+use actix_web::error::BlockingError;
 use actix_web::http::header::ContentType;
 use diesel::ConnectionError;
 use ethers_core::abi::AbiError;
@@ -83,6 +84,7 @@ pub enum MyError {
     NotEnoughFunds(NotEnoughFundsError),
     ParseInt(ParseIntError),
     Send(tokio::sync::mpsc::error::SendError<()>),
+    Blocking(BlockingError),
 }
 
 #[derive(Serialize)]
@@ -146,6 +148,7 @@ impl Display for MyError {
             Self::NotEnoughFunds(_) => write!(f, "Not enough funds."),
             Self::ParseInt(_) => write!(f, "Cannot parse integer."),
             Self::Send(_) => write!(f, "Send () error."),
+            Self::Blocking(_) => write!(f, "Blocking error."),
         }
     }
 }
@@ -303,5 +306,11 @@ impl From<ParseIntError> for MyError {
 impl From<tokio::sync::mpsc::error::SendError<()>> for MyError {
     fn from(value: tokio::sync::mpsc::error::SendError<()>) -> Self {
         Self::Send(value)
+    }
+}
+
+impl From<BlockingError> for MyError {
+    fn from(value: BlockingError) -> Self {
+        Self::Blocking(value)
     }
 }

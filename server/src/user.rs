@@ -54,7 +54,7 @@ pub async fn user_register(request: HttpRequest, info: web::Form<User>, common: 
         )
             .returning(id)
             .get_result(conn)?
-    ).await?;
+    ).await??;
     Identity::login(&request.extensions(), format!("{}", v_id))?;
     Ok(web::Json(""))
 }
@@ -73,7 +73,7 @@ pub async fn user_login(request: HttpRequest, info: web::Form<Login>, common: we
         .filter(email.eq(info.email.clone()))
         .select((id, password))
         .get_result::<(i64, String)>(conn)?
-    ).await?;
+    ).await??;
     if v_password != info.password {
         return Err(AuthenticationFailedError::new().into());
     }

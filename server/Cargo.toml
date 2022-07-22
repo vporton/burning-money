@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 actix-web = { version = "4.0.1", features = ["cookies"] }
-diesel = { version = "2.0.0-rc.0", features = ["postgres", "postgres_backend"] }
+diesel = { version = "2.0.0-rc.1", features = ["postgres", "postgres_backend"] }
 diesel-derive-enum = { version = "2.0.0-rc.0", features = ["postgres"] }
 askama = { version = "0.11.1", features = ["with-actix-web"] }
 askama_actix = "0.13.0"
