@@ -195,7 +195,7 @@ pub async fn confirm_payment(
                 bid_date.eq(DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp()),
             ))
                 .execute(&mut common.lock().await.db)?;
-            common.lock().await.notify_transaction_tx.send(());
+            common.lock().await.notify_transaction_tx.send(())?;
         }
         "canceled" => {
             lock_funds(&common, -fiat_amount).await?;

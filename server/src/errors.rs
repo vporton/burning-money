@@ -82,6 +82,7 @@ pub enum MyError {
     ArrayLength(TryFromSliceError),
     NotEnoughFunds(NotEnoughFundsError),
     ParseInt(ParseIntError),
+    Send(tokio::sync::mpsc::error::SendError<()>),
 }
 
 #[derive(Serialize)]
@@ -144,6 +145,7 @@ impl Display for MyError {
             Self::ArrayLength(err) => write!(f, "Array length error: {}", err),
             Self::NotEnoughFunds(_) => write!(f, "Not enough funds."),
             Self::ParseInt(_) => write!(f, "Cannot parse integer."),
+            Self::Send(_) => write!(f, "Send () error."),
         }
     }
 }
@@ -295,5 +297,11 @@ impl From<NotEnoughFundsError> for MyError {
 impl From<ParseIntError> for MyError {
     fn from(value: ParseIntError) -> Self {
         Self::ParseInt(value)
+    }
+}
+
+impl From<tokio::sync::mpsc::error::SendError<()>> for MyError {
+    fn from(value: tokio::sync::mpsc::error::SendError<()>) -> Self {
+        Self::Send(value)
     }
 }

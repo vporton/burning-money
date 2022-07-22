@@ -1,7 +1,7 @@
 use futures::stream::StreamExt;
 use std::collections::HashSet;
 use diesel::OptionalExtension;
-use tokio::sync::{mpsc, Mutex, Notify};
+use tokio::sync::{mpsc, Mutex};
 use serde_derive::Deserialize;
 use std::fs;
 use std::fs::OpenOptions;
