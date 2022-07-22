@@ -11,6 +11,7 @@ use ethers_core::abi::AbiError;
 use lambda_web::LambdaError;
 // use stripe::{RequestError, StripeError};
 use serde::Serialize;
+use tokio::task::JoinError;
 
 // #[derive(Debug)]
 // pub struct CannotLoadOrGenerateEthereumKeyError(String);
@@ -85,6 +86,7 @@ pub enum MyError {
     ParseInt(ParseIntError),
     Send(tokio::sync::mpsc::error::SendError<()>),
     Blocking(BlockingError),
+    Join(JoinError),
 }
 
 #[derive(Serialize)]
@@ -149,6 +151,7 @@ impl Display for MyError {
             Self::ParseInt(_) => write!(f, "Cannot parse integer."),
             Self::Send(_) => write!(f, "Send () error."),
             Self::Blocking(_) => write!(f, "Blocking error."),
+            Self::Join(_) => write!(f, "Join error."),
         }
     }
 }
@@ -312,5 +315,11 @@ impl From<tokio::sync::mpsc::error::SendError<()>> for MyError {
 impl From<BlockingError> for MyError {
     fn from(value: BlockingError) -> Self {
         Self::Blocking(value)
+    }
+}
+
+impl From<JoinError> for MyError {
+    fn from(value: JoinError) -> Self {
+        Self::Join(value)
     }
 }

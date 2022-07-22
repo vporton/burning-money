@@ -10,7 +10,7 @@ use actix_web::{get, post, Responder, web, HttpResponse};
 use actix_web::http::header::CONTENT_TYPE;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use diesel::{insert_into, RunQueryDsl};
-use diesel::connection::AnsiTransactionManager;
+use diesel::connection::{AnsiTransactionManager, TransactionManager};
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -18,6 +18,7 @@ use web3::contract::{Contract, Options};
 use diesel::QueryDsl;
 use futures::executor::block_on;
 use tokio::sync::Mutex;
+use tokio::task::spawn_blocking;
 use crate::{Common, CommonReadonly, MyError};
 use crate::async_db::finish_transaction;
 use crate::errors::{AuthenticationFailedError, NotEnoughFundsError};
@@ -91,22 +92,44 @@ async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly
     Ok(())
 }
 
-async fn lock_funds(common: &Arc<Mutex<Common>>, amount: i64) -> Result<(), MyError> {
-    let conn = &mut common.lock().await.db;
-    web::block(|| {
-        AnsiTransactionManager::begin_transaction(conn)?;
-    });
-    let do_it = move || async move {
+async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), MyError> {
+    let amount = amount.clone();
+    let amount2 = amount.clone(); // superfluous?
+    { // restrict lock duration
+        let conn = &mut common.clone().lock().await.db;
+        web::block(|| {
+            AnsiTransactionManager::begin_transaction(conn)?;
+            Ok::<_, MyError>(())
+        }).await??;
+    }
+    let do_it = move || -> Pin<Box<dyn Future<Output = Result<_, MyError>> + Send>> { Box::pin(async move {
         use crate::schema::global::dsl::*;
-        let v_free_funds = web::block(|| global.select(free_funds).for_update().first(conn)?).await??;
+        let v_free_funds: i64 = { // restrict lock duration
+            let common = common.clone();
+            let mut conn = &mut common.lock().await.db;
+            web::block(move || {
+                Ok::<_, MyError>(global.select(free_funds).for_update().first(conn)?)
+            }).await??
+        };
         const MAX_GAS: i64 = 30_000_000; // TODO: less
         if amount >= v_free_funds + MAX_GAS {
             return Err(NotEnoughFundsError::new().into());
         }
-        web::block(|| Ok(update(global).set(free_funds.eq(free_funds - amount)).execute(conn)?)).await??;
+        { // restrict lock duration
+            let conn = &mut common.clone().lock().await.db;
+            web::block(move || {
+                Ok::<_, MyError>(update(global).set(free_funds.eq(free_funds - amount2)).execute(conn)?)
+            }).await??;
+        }
         Ok(())
-    };
-    web::block(async { finish_transaction(conn, do_it().await)? }).await?;
+    }) };
+    { // restrict lock duration
+        let conn = &mut common.clone().lock().await.db;
+        web::block(move || async move {
+            finish_transaction(conn, do_it().await)?;
+            Ok::<_, MyError>(())
+        }).await?;
+    }
     Ok(())
 }
 
@@ -191,7 +214,7 @@ pub async fn confirm_payment(
             // FIXME: Transaction.
             let conn = &mut common.lock().await.db; // FIXME: blocks for too long, need pool.
             let do_it = move || async move {
-                lock_funds(&common, collateral_amount).await?;
+                lock_funds(*common.clone(), collateral_amount).await?;
                 finalize_payment(form.payment_intent_id.as_str(), &*readonly).await?;
                 web::block(||
                     insert_into(txs).values(&(
@@ -209,7 +232,7 @@ pub async fn confirm_payment(
             common.lock().await.notify_transaction_tx.send(())?;
         }
         "canceled" => {
-            lock_funds(&common, -fiat_amount).await?;
+            lock_funds(common.clone(), -fiat_amount).await?;
         }
         _ => {}
     }
@@ -217,7 +240,7 @@ pub async fn confirm_payment(
 }
 
 pub async fn exchange_item(item: crate::models::Tx, common: &Arc<Mutex<Common>>, readonly: &Arc<CommonReadonly>) -> Result<(), MyError> {
-    lock_funds(common, -item.usd_amount).await?;
+    lock_funds(common.clone(), -item.usd_amount).await?;
     let naive = NaiveDateTime::from_timestamp(item.bid_date, 0);
     let tx = do_exchange(
         &readonly,
