@@ -122,8 +122,16 @@ async fn main() -> Result<(), MyError> {
         let mut s = "".to_string();
         file.read_to_string(&mut s)?;
         let mut v = s.chars().collect::<Vec<char>>();
-        while v.last().unwrap().is_whitespace() { // FIXME: unwrap()
-            let _ = v.pop();
+        loop {
+            if let Some(last) = v.last() {
+                if last.is_whitespace() {
+                    let _ = v.pop();
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
         }
         let s: String = v.into_iter().collect();
         match SecretKey::from_str(s.as_str()) {
