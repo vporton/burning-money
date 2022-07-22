@@ -6,7 +6,6 @@ use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use actix_web::error::BlockingError;
 use actix_web::http::header::ContentType;
-use diesel::ConnectionError;
 use ethers_core::abi::AbiError;
 use lambda_web::LambdaError;
 // use stripe::{RequestError, StripeError};
@@ -63,8 +62,6 @@ impl Display for NotEnoughFundsError {
 pub enum MyError {
     Template(askama::Error),
     IO(io::Error),
-    DbConnection(ConnectionError),
-    Database(diesel::result::Error),
     Secp256k1(secp256k1::Error),
     Abi(AbiError),
     // CannotLoadOrGenerateEthereumKey(CannotLoadOrGenerateEthereumKeyError),
@@ -87,6 +84,7 @@ pub enum MyError {
     Send(tokio::sync::mpsc::error::SendError<()>),
     Blocking(BlockingError),
     Join(JoinError),
+    TokioPostgres(tokio_postgres::Error),
 }
 
 #[derive(Serialize)]
@@ -127,8 +125,6 @@ impl Display for MyError {
         match self {
             Self::Template(err) => write!(f, "Error in Askama template: {err}"),
             Self::IO(err) => write!(f, "I/O error: {err}"),
-            Self::DbConnection(err) => write!(f, "Cannot connect to DB: {err}"),
-            Self::Database(err) => write!(f, "DB error: {err}"),
             Self::Secp256k1(err) => write!(f, "(De)ciphering error: {err}"),
             // Self::EthSign(err) => write!(f, "Ethereum signing error: {err}"),
             Self::Abi(err) => write!(f, "Ethereum ABI error: {err}"),
@@ -152,6 +148,7 @@ impl Display for MyError {
             Self::Send(_) => write!(f, "Send () error."),
             Self::Blocking(_) => write!(f, "Blocking error."),
             Self::Join(_) => write!(f, "Join error."),
+            Self::TokioPostgres(err) => write!(f, "Postgres error: {}", err),
         }
     }
 }
@@ -179,18 +176,6 @@ impl From<askama::Error> for MyError {
 impl From<io::Error> for MyError {
     fn from(value: io::Error) -> Self {
         Self::IO(value)
-    }
-}
-
-impl From<ConnectionError> for MyError {
-    fn from(value: ConnectionError) -> Self {
-        Self::DbConnection(value)
-    }
-}
-
-impl From<diesel::result::Error> for MyError {
-    fn from(value: diesel::result::Error) -> Self {
-        Self::Database(value)
     }
 }
 
@@ -322,4 +307,10 @@ impl From<JoinError> for MyError {
     fn from(value: JoinError) -> Self {
         Self::Join(value)
     }
+}
+
+impl From<tokio_postgres::Error> for MyError {
+    fn from(value: tokio_postgres::Error) -> Self {
+    Self::TokioPostgres(value)
+}
 }

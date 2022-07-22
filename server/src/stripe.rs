@@ -1,4 +1,3 @@
-use diesel::{Connection, ExpressionMethods, update};
 use web3::types::*;
 use std::collections::HashMap;
 use std::future::{Future, ready};
@@ -9,13 +8,10 @@ use actix_identity::Identity;
 use actix_web::{get, post, Responder, web, HttpResponse};
 use actix_web::http::header::CONTENT_TYPE;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use diesel::{insert_into, RunQueryDsl};
-use diesel::connection::{AnsiTransactionManager, TransactionManager};
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use web3::contract::{Contract, Options};
-use diesel::QueryDsl;
 use futures::executor::block_on;
 use tokio::sync::Mutex;
 use tokio::task::spawn_blocking;
@@ -45,13 +41,11 @@ pub async fn create_payment_intent(
     { // block
         let common = (**common).clone();
         let v_id = ident.id()?.parse::<i64>()?;
-        use crate::schema::users::dsl::*;
-        let v_passed_kyc: bool = web::block(move || -> Result<_, MyError> {
-            let mut common = block_on(async { common.lock().await });
-            Ok(users.filter(id.eq(v_id))
-                .select(passed_kyc)
-                .get_result(&mut common.db)?)
-        }).await??;
+        let v_passed_kyc: bool = {
+            let result = common.lock().await.db
+                .query_one("SELECT passed_kyc FROM users WHERE id=$1", &[&v_id]).await?;
+            result.get(0)
+        };
         if !v_passed_kyc {
             return Err(AuthenticationFailedError::new().into()); // TODO: more specific error
         }
@@ -92,44 +86,24 @@ async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly
     Ok(())
 }
 
-async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), MyError> {
+async fn lock_funds(common: &Arc<Mutex<Common>>, amount: i64) -> Result<(), MyError> {
     let amount = amount.clone();
     let amount2 = amount.clone(); // superfluous?
-    { // restrict lock duration
-        let conn = &mut common.clone().lock().await.db;
-        web::block(|| {
-            AnsiTransactionManager::begin_transaction(conn)?;
-            Ok::<_, MyError>(())
-        }).await??;
-    }
-    let do_it = move || -> Pin<Box<dyn Future<Output = Result<_, MyError>> + Send>> { Box::pin(async move {
-        use crate::schema::global::dsl::*;
-        let v_free_funds: i64 = { // restrict lock duration
-            let common = common.clone();
-            let mut conn = &mut common.lock().await.db;
-            web::block(move || {
-                Ok::<_, MyError>(global.select(free_funds).for_update().first(conn)?)
-            }).await??
-        };
+    let mut common = common.lock().await; // locks for all duration of the function
+    let conn = &mut common.db; // locks for all duration of the function
+    let trans = conn.transaction().await?;
+    let trans = &trans;
+    let do_it = move || async move {
+        let v_free_funds: i64 =
+            trans.query_one("SELECT free_funds FROM global FOR UPDATE", &[]).await?.get(0);
         const MAX_GAS: i64 = 30_000_000; // TODO: less
         if amount >= v_free_funds + MAX_GAS {
-            return Err(NotEnoughFundsError::new().into());
+            return Err::<_, MyError>(NotEnoughFundsError::new().into());
         }
-        { // restrict lock duration
-            let conn = &mut common.clone().lock().await.db;
-            web::block(move || {
-                Ok::<_, MyError>(update(global).set(free_funds.eq(free_funds - amount2)).execute(conn)?)
-            }).await??;
-        }
+        trans.execute("UPDATE global SET free_funds=$1", &[&(v_free_funds - amount2)]).await?;
         Ok(())
-    }) };
-    { // restrict lock duration
-        let conn = &mut common.clone().lock().await.db;
-        web::block(move || async move {
-            finish_transaction(conn, do_it().await)?;
-            Ok::<_, MyError>(())
-        }).await?;
-    }
+    };
+    finish_transaction::<_, MyError>(trans, do_it().await).await?;
     Ok(())
 }
 
@@ -209,30 +183,32 @@ pub async fn confirm_payment(
 
     match intent.get("status").unwrap().as_str().unwrap() { // TODO: unwrap()
         "succeeded" => {
-            use crate::schema::txs::dsl::*;
             let collateral_amount = fiat_to_crypto(&*readonly, fiat_amount).await?;
             // FIXME: Transaction.
             let conn = &mut common.lock().await.db; // FIXME: blocks for too long, need pool.
+            let trans = conn.transaction().await?;
+            let common = &common.clone();
+            let trans = &trans;
             let do_it = move || async move {
-                lock_funds(*common.clone(), collateral_amount).await?;
+                lock_funds(&**common, collateral_amount).await?;
                 finalize_payment(form.payment_intent_id.as_str(), &*readonly).await?;
-                web::block(||
-                    insert_into(txs).values(&(
-                        user_id.eq(ident.id()?.parse::<i64>()?),
-                        eth_account.eq(<Address>::from_str(&form.crypto_account)?.as_bytes()),
-                        usd_amount.eq(fiat_amount),
-                        crypto_amount.eq(collateral_amount),
-                        bid_date.eq(DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp()),
-                    ))
-                        .execute(conn)?
-                ).await??;
+                trans.execute(
+                    "INSERT INTO txs SET user_id=$1, eth_account=$2, usd_amount=$3, crypto_amount=$4, bid_date=$5",
+                    &[
+                        &ident.id()?.parse::<i64>()?,
+                        &<Address>::from_str(&form.crypto_account)?.as_bytes(),
+                        &fiat_amount,
+                        &collateral_amount,
+                        &DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp(),
+                    ],
+                ).await?;
                 Ok::<_, MyError>(())
             };
-            finish_transaction(conn, do_it().await);
+            finish_transaction(trans, do_it().await).await?;
             common.lock().await.notify_transaction_tx.send(())?;
         }
         "canceled" => {
-            lock_funds(common.clone(), -fiat_amount).await?;
+            lock_funds(&**common, -fiat_amount).await?;
         }
         _ => {}
     }
@@ -240,7 +216,7 @@ pub async fn confirm_payment(
 }
 
 pub async fn exchange_item(item: crate::models::Tx, common: &Arc<Mutex<Common>>, readonly: &Arc<CommonReadonly>) -> Result<(), MyError> {
-    lock_funds(common.clone(), -item.usd_amount).await?;
+    lock_funds(common, -item.usd_amount).await?;
     let naive = NaiveDateTime::from_timestamp(item.bid_date, 0);
     let tx = do_exchange(
         &readonly,
@@ -248,13 +224,8 @@ pub async fn exchange_item(item: crate::models::Tx, common: &Arc<Mutex<Common>>,
         DateTime::from_utc(naive, Utc),
         item.crypto_amount
     ).await?;
-    let conn = &mut common.lock().await.db;
-    use crate::schema::txs::dsl::*;
-    web::block(||
-        update(txs.filter(id.eq(item.id)))
-            .set((status.eq(TxsStatusType::SubmittedToBlockchain), tx_id.eq(tx.as_bytes())))
-            .execute(conn)?
-    ).await??;
+    let conn = &common.lock().await.db;
+    conn.execute("UPDATE txs SET status='submitted_to_blockchain' WHERE id=$1", &[&item.id]).await?;
     common.lock().await.transactions_awaited.insert(tx);
     Ok(())
 }

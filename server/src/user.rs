@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use actix_identity::Identity;
 use actix_web::{get, post, HttpMessage, HttpRequest, Responder, web, HttpResponse};
-use diesel::{ExpressionMethods, insert_into, QueryDsl, RunQueryDsl};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use crate::{Common, MyError};
@@ -40,21 +39,12 @@ pub async fn user_register(request: HttpRequest, info: web::Form<User>, common: 
 {
     // FIXME: Check email.
     let info = info.clone();
-    use crate::schema::users::dsl::*;
     let common = &**common;
     let conn = &mut common.lock().await.db;
-    let v_id: i64 = web::block(
-        || insert_into(users).values(
-            &(
-                first_name.eq(info.first_name),
-                last_name.eq(info.last_name),
-                email.eq(info.email),
-                password.eq(info.password), // FIXME: Check for strong password. // FIXME: Cipher password
-            )
-        )
-            .returning(id)
-            .get_result(conn)?
-    ).await??;
+    let v_id: i64 = conn.query_one(
+        "INSERT users SET first_name=$1, last_name=$2, email=$3, password=$4 RETURNING id",
+        &[&info.first_name, &info.last_name, &info.email, &info.password],
+    ).await?.get(0);
     Identity::login(&request.extensions(), format!("{}", v_id))?;
     Ok(web::Json(""))
 }
@@ -67,13 +57,10 @@ pub struct Login {
 
 #[post("/login")]
 pub async fn user_login(request: HttpRequest, info: web::Form<Login>, common: web::Data<Arc<Mutex<Common>>>) -> Result<impl Responder, MyError> {
-    let conn = &mut common.lock().await.db;
-    use crate::schema::users::dsl::*;
-    let (v_id, v_password) = web::block(|| users
-        .filter(email.eq(info.email.clone()))
-        .select((id, password))
-        .get_result::<(i64, String)>(conn)?
-    ).await??;
+    let conn = &common.lock().await.db;
+    let row = conn.query_one(
+        "SELECT id, password FROM users WHERE email=$1", &[&info.email]).await?;
+    let (v_id, v_password): (i64, &str) = (row.get(0), row.get(1));
     if v_password != info.password {
         return Err(AuthenticationFailedError::new().into());
     }

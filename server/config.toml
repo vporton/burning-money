@@ -12,7 +12,7 @@ ethereum_key_file = "ethereum.priv"
 #ethereum_password = "ooP2Aigodee8OoM3"
 
 [database]
-url = "postgres://rserver:123@localhost/rserver"
+conn_string = "host=localhost user=rserver password=123"
 
 [stripe]
 # The following are testing credentials:

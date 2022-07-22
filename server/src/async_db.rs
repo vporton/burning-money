@@ -1,8 +1,6 @@
 use std::future::Future;
-use diesel::Connection;
-use diesel::connection::{AnsiTransactionManager, TransactionManager};
-use diesel::result::Error;
 use tokio::task::spawn_blocking;
+use tokio_postgres::Transaction;
 
 // pub async fn transaction<C: Connection, T, E, F>(conn: &mut C, f: F) -> Result<T, E>
 //     where
@@ -23,14 +21,14 @@ use tokio::task::spawn_blocking;
 //     }
 // }
 
-pub fn finish_transaction<C: Connection, T, E>(conn: &mut C, value: Result<T, E>) -> Result<T, E> {
+pub async fn finish_transaction<T, E>(trans: &tokio_postgres::Transaction, value: Result<T, E>) -> Result<T, E> {
     match value {
         Ok(value) => {
-            AnsiTransactionManager::commit_transaction(conn)?;
+            trans.commit().await?;
             Ok(value)
         }
         Err(e) => {
-            AnsiTransactionManager::rollback_transaction(conn).map_err(|e| Error::RollbackError(Box::new(e)))?;
+            trans.rollback().await?;
             Err(e)
         }
     }

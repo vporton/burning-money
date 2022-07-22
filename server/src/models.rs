@@ -1,9 +1,5 @@
-use diesel::*;
-use crate::schema::*;
 use crate::sql_types::TxsStatusType;
 
-#[derive(Queryable, Insertable)]
-#[diesel(table_name = txs)]
 pub struct Tx {
     pub id: i64,
     pub user_id: i64,

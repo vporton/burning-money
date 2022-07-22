@@ -1,6 +1,5 @@
 use futures::stream::StreamExt;
 use std::collections::HashSet;
-use diesel::OptionalExtension;
 use tokio::sync::{mpsc, Mutex};
 use serde_derive::Deserialize;
 use std::fs;
@@ -16,8 +15,6 @@ use actix_web::{App, cookie, HttpServer, web};
 use actix_web::web::Data;
 use env_logger::TimestampPrecision;
 use clap::Parser;
-use diesel::{Connection, insert_into, PgConnection, RunQueryDsl, update};
-use diesel::connection::{AnsiTransactionManager, TransactionManager};
 use lambda_web::{is_running_on_lambda};
 use rand::thread_rng;
 use secp256k1::SecretKey;
@@ -26,17 +23,16 @@ use web3::signing::{Key, SecretKeyRef};
 use web3::transports::Http;
 use web3::types::{Address, BlockId, H256};
 use web3::Web3;
-use diesel::QueryDsl;
-use diesel::ExpressionMethods;
 use futures::executor::block_on;
 use log::error;
+use tokio_postgres::NoTls;
 use web3::api::Namespace;
 use tokio_scoped::scope;
 use web3::api::EthFilter;
 use crate::async_db::finish_transaction;
 use crate::errors::MyError;
+use crate::models::Tx;
 use crate::pages::{about_us, not_found};
-use crate::sql_types::TxsStatusType;
 use crate::stripe::{create_payment_intent, exchange_item, stripe_public_key};
 use crate::user::{user_identity, user_login, user_register};
 
@@ -46,7 +42,6 @@ mod stripe;
 mod user;
 mod async_db;
 mod sql_types;
-mod schema;
 mod models;
 
 static APP_USER_AGENT: &str = "CardToken seller";
@@ -73,7 +68,7 @@ pub struct SecretsConfig {
 
 #[derive(Clone, Deserialize)]
 pub struct DBConfig {
-    url: String,
+    conn_string: String,
 }
 
 #[derive(Clone, Deserialize)]
@@ -96,7 +91,7 @@ pub struct CommonReadonly {
 }
 
 pub struct Common {
-    db: PgConnection,
+    db: tokio_postgres::Client,
     transactions_awaited: HashSet<H256>,
     // TODO: Unbounded?
     notify_transaction_tx: mpsc::UnboundedSender<()>,
@@ -168,8 +163,16 @@ async fn main() -> Result<(), MyError> {
         },
     };
     let (notify_transaction_tx, notify_transaction_rx) = mpsc::unbounded_channel();
+    let (client, connection) =
+        tokio_postgres::connect(config.database.conn_string.as_str(), NoTls).await?;
+    tokio::spawn(async move { // TODO: Stop it how?
+        if let Err(e) = connection.await {
+            eprintln!("connection error: {}", e);
+        }
+    });
+
     let common = Arc::new(Mutex::new(Common {
-        db: PgConnection::establish(config2.database.url.as_str())?,
+        db: client,
         transactions_awaited: HashSet::new(),
         notify_transaction_tx,
         notify_transaction_rx: Arc::new(Mutex::new(notify_transaction_rx)),
@@ -178,22 +181,19 @@ async fn main() -> Result<(), MyError> {
     let funds = readonly.web3.eth().balance(
          SecretKeyRef::new(&readonly.ethereum_key).address(), None).await?;
     let funds = funds.as_u64() as i64;
+    let trans = common.lock().await.db.transaction().await?;
     { // block
-        use crate::schema::global::dsl::*;
         let conn = &mut common.lock().await.db;
-        web::block(|| {
-            AnsiTransactionManager::begin_transaction(conn)?;
-            let do_it = || {
-                let v_free_funds = global.select(free_funds).for_update().first::<i64>(conn).optional()?;
-                if let Some(_v_free_funds) = v_free_funds {
-                    update(global).set(free_funds.eq(funds)).execute(conn)?;
-                } else {
-                    insert_into(global).values(free_funds.eq(funds)).execute(conn)?;
-                }
-                Ok::<_, MyError>(())
-            };
-            finish_transaction(do_it())?;
-        })().await??;
+        let do_it = move || async move {
+            let v_free_funds = conn.query_opt("SELECT free_funds FROM global FRO UPDATE", &[]).await?;
+            if let Some(_v_free_funds) = v_free_funds {
+                conn.execute("UPDATE global SET free_funds=$1", &[&funds]).await?;
+            } else {
+                conn.execute("INSERT global SET free_funds=$1", &[&funds]).await?;
+            }
+            Ok::<_, MyError>(())
+        };
+        finish_transaction(trans, do_it()).await?;
     }
 
     let readonly = Arc::new(readonly);
@@ -204,15 +204,19 @@ async fn main() -> Result<(), MyError> {
     scope(|scope| {
         // TODO: Initialize common.transactions_awaited from DB.
         let my_loop = move || async move {
-            let txs_iter = {
-                use crate::schema::txs::dsl::*;
-                web::block(
-                    txs.filter(status.eq(TxsStatusType::Created))
-                        .load(&mut common2.lock().await.db)?
-                        .into_iter()
-                ).await??
-            };
+            let txs_iter =
+                common2.lock().await.db.query("SELECT * FROM txs WHERE status='created'").await?.into_iter();
             for tx in txs_iter {
+                let tx = Tx {
+                    id: tx.get("id"),
+                    user_id: tx.get("user_id"),
+                    eth_account: tx.get("eth_account"),
+                    usd_amount: tx.get("usd_amount"),
+                    crypto_amount: tx.get("crypto_amount"),
+                    bid_date: tx.get("bid_date"),
+                    status: tx.get("status"),
+                    tx_id: tx.get("tx_id"),
+                };
                 exchange_item(tx, common2, readonly2).await?;
             }
             loop { // TODO: Interrupt loop on exit.
@@ -228,12 +232,10 @@ async fn main() -> Result<(), MyError> {
                         if let Some(block) = readonly.web3.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
                             for tx in block.transactions {
                                 if common.lock().await.transactions_awaited.remove(&tx) {
-                                    use crate::schema::txs::dsl::*;
-                                    web::block(
-                                        update(txs.filter(tx_id.eq(tx.as_bytes())))
-                                            .set((status.eq(TxsStatusType::Confirmed), tx_id.eq(tx.as_bytes())))
-                                            .execute(&mut common.lock().await.db)?
-                                    ).await??;
+                                    common.lock().await.db.execute(
+                                        "UPDATE txs SET status='confirmed' WHERE tx_id=$1",
+                                        &[&tx.as_bytes()]
+                                    ).await?;
                                 }
                             }
                         }
