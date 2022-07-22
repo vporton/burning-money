@@ -42,6 +42,7 @@ mod pages;
 mod errors;
 mod stripe;
 mod user;
+mod async_db;
 mod sql_types;
 mod schema;
 mod models;
@@ -179,12 +180,14 @@ async fn main() -> Result<(), MyError> {
         use crate::schema::global::dsl::*;
         let conn = &mut common.lock().await.db;
         conn.transaction::<_, MyError, _>(|conn| {
-            let v_free_funds = global.select(free_funds).for_update().first::<i64>(conn).optional()?;
-            if let Some(_v_free_funds) = v_free_funds {
-                update(global).set(free_funds.eq(funds)).execute(conn)?;
-            } else {
-                insert_into(global).values(free_funds.eq(funds)).execute(conn)?;
-            }
+            let v_free_funds = web::block(||
+                global.select(free_funds).for_update().first::<i64>(conn).optional()?
+                if let Some(_v_free_funds) = v_free_funds {
+                    update(global).set(free_funds.eq(funds)).execute(conn)?;
+                } else {
+                    insert_into(global).values(free_funds.eq(funds)).execute(conn)?;
+                }
+            ).await?;
             Ok(())
         })?;
     }
@@ -199,9 +202,11 @@ async fn main() -> Result<(), MyError> {
         let my_loop = move || async move {
             let txs_iter = {
                 use crate::schema::txs::dsl::*;
-                txs.filter(status.eq(TxsStatusType::Created))
-                    .load(&mut common2.lock().await.db)?
-                    .into_iter()
+                web::block(
+                    txs.filter(status.eq(TxsStatusType::Created))
+                        .load(&mut common2.lock().await.db)?
+                        .into_iter()
+                ).await?
             };
             for tx in txs_iter {
                 exchange_item(tx, common2, readonly2).await?;
@@ -220,9 +225,11 @@ async fn main() -> Result<(), MyError> {
                             for tx in block.transactions {
                                 if common.lock().await.transactions_awaited.remove(&tx) {
                                     use crate::schema::txs::dsl::*;
-                                    update(txs.filter(tx_id.eq(tx.as_bytes())))
-                                        .set((status.eq(TxsStatusType::Confirmed), tx_id.eq(tx.as_bytes())))
-                                        .execute(&mut common.lock().await.db)?;
+                                    web::block(
+                                        update(txs.filter(tx_id.eq(tx.as_bytes())))
+                                            .set((status.eq(TxsStatusType::Confirmed), tx_id.eq(tx.as_bytes())))
+                                            .execute(&mut common.lock().await.db)?
+                                    ).await?;
                                 }
                             }
                         }

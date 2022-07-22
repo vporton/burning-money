@@ -42,16 +42,19 @@ pub async fn user_register(request: HttpRequest, info: web::Form<User>, common: 
     let info = info.clone();
     use crate::schema::users::dsl::*;
     let common = &**common;
-    let v_id: i64 = insert_into(users).values(
-        &(
-            first_name.eq(info.first_name),
-            last_name.eq(info.last_name),
-            email.eq(info.email),
-            password.eq(info.password), // FIXME: Check for strong password. // FIXME: Cipher password
+    let conn = &mut common.lock().await.db;
+    let v_id: i64 = web::block(
+        || insert_into(users).values(
+            &(
+                first_name.eq(info.first_name),
+                last_name.eq(info.last_name),
+                email.eq(info.email),
+                password.eq(info.password), // FIXME: Check for strong password. // FIXME: Cipher password
+            )
         )
-    )
-        .returning(id)
-        .get_result(&mut common.lock().await.db)?;
+            .returning(id)
+            .get_result(conn)?
+    ).await?;
     Identity::login(&request.extensions(), format!("{}", v_id))?;
     Ok(web::Json(""))
 }
@@ -64,11 +67,13 @@ pub struct Login {
 
 #[post("/login")]
 pub async fn user_login(request: HttpRequest, info: web::Form<Login>, common: web::Data<Arc<Mutex<Common>>>) -> Result<impl Responder, MyError> {
+    let conn = &mut common.lock().await.db;
     use crate::schema::users::dsl::*;
-    let (v_id, v_password) = users
+    let (v_id, v_password) = web::block(|| users
         .filter(email.eq(info.email.clone()))
         .select((id, password))
-        .get_result::<(i64, String)>(&mut common.lock().await.db)?;
+        .get_result::<(i64, String)>(conn)?
+    ).await?;
     if v_password != info.password {
         return Err(AuthenticationFailedError::new().into());
     }
