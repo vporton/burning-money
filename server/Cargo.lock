@@ -2547,6 +2547,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-postgres",
+ "tokio-postgres-migration",
  "toml",
  "web3 0.18.0 (git+https://github.com/vporton/rust-web3?branch=feature/80_bit_token)",
 ]
@@ -3076,6 +3077,16 @@ dependencies = [
  "socket2",
  "tokio",
  "tokio-util 0.7.3",
+]
+
+[[package]]
+name = "tokio-postgres-migration"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f4cbd11616abaecba7df0fa9c35929b70e41d8198db394ae22626aa68e252a4"
+dependencies = [
+ "log",
+ "tokio-postgres",
 ]
 
 [[package]]
