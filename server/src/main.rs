@@ -185,19 +185,12 @@ async fn main() -> Result<(), MyError> {
         let mut common = common.lock().await;
         let trans = common.db.transaction().await?;
         // let conn = &mut common.db;
-        // let do_it = { // block
-            let trans0 = &trans;
-            let do_it = move || async move {
-                let v_free_funds = trans0.query_opt("SELECT free_funds FROM global FRO UPDATE", &[]).await?;
-                if let Some(_v_free_funds) = v_free_funds {
-                    trans0.execute("UPDATE global SET free_funds=$1", &[&funds]).await?;
-                } else {
-                    trans0.execute("INSERT global SET free_funds=$1", &[&funds]).await?;
-                }
-                Ok::<_, MyError>(())
-            };
-        //     do_it
-        // };
+        let v_free_funds_row = trans.query_opt("SELECT free_funds FROM global FRO UPDATE", &[]).await?;
+        if let Some(_v_free_funds) = v_free_funds_row {
+            trans.execute("UPDATE global SET free_funds=$1", &[&funds]).await?;
+        } else {
+            trans.execute("INSERT global SET free_funds=$1", &[&funds]).await?;
+        }
         finish_transaction(trans, Ok::<_, MyError>(())).await?;
     }
 
