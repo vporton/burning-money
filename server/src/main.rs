@@ -25,6 +25,8 @@ use web3::types::{Address, BlockId, H256};
 use web3::Web3;
 use futures::executor::block_on;
 use log::error;
+use tokio::{spawn, task};
+use tokio::task::{spawn_blocking, spawn_local};
 use tokio_postgres::NoTls;
 use web3::api::Namespace;
 use tokio_scoped::scope;
@@ -289,21 +291,22 @@ async fn main() -> Result<(), MyError> {
                 )
         };
 
-        block_on((move || async move { // FIXME: Does block_on create problems?
-            if is_running_on_lambda() {
-                // run_actix_on_lambda(factory).await?; // Run on AWS Lambda. // TODO
-            } else {
-                if let Err(err) = HttpServer::new(factory)
-                    .bind((config2.host.as_str(), config2.port))?
-                    .run()
-                    .await
-                {
-                    error!("Error running HTTP server: {}", err);
+        block_on(async { // FIXME
+            // task::spawn_local(async move {
+                if is_running_on_lambda() {
+                    // run_actix_on_lambda(factory).await?; // Run on AWS Lambda. // TODO
+                } else {
+                    match HttpServer::new(factory).bind((config2.host.as_str(), config2.port)) {
+                        Ok(server) => if let Err(err) = server.run().await {
+                            error!("Error running HTTP server: {}", err);
+                        },
+                        Err(err) => error!("Error binding HTTP server: {}", err),
+                    }
                 }
-            }
-            Ok::<_, MyError>(())
-        })())?;
-        Ok::<_, MyError>(())
+                // Ok::<_, MyError>(())
+            // }).await.unwrap();
+            // Ok::<_, MyError>(())
+        })?
     })?;
     Ok(())
 }
