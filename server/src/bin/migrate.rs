@@ -83,6 +83,10 @@ async fn main() -> Result<(), MyError> {
         Down => migration.down(&mut client, &SCRIPTS_DOWN).await?,
         OneUp => migration.up(&mut client, &SCRIPTS_UP[..1]).await?,
         OneDown => migration.down(&mut client, &SCRIPTS_DOWN[..1]).await?,
+        Redo => {
+            migration.down(&mut client, &SCRIPTS_DOWN[..1]).await?;
+            migration.up(&mut client, &SCRIPTS_UP[..1]).await?;
+        },
     }
 
     Ok(())
