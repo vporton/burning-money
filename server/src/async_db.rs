@@ -1,6 +1,3 @@
-use std::future::Future;
-use tokio::task::spawn_blocking;
-
 // pub async fn transaction<C: Connection, T, E, F>(conn: &mut C, f: F) -> Result<T, E>
 //     where
 //         F: FnOnce() -> (dyn Future<Output = Result<T, E>>) + Unpin,

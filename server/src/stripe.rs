@@ -1,7 +1,5 @@
 use web3::types::*;
 use std::collections::HashMap;
-use std::future::{Future, ready};
-use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::Arc;
 use actix_identity::Identity;
@@ -12,13 +10,10 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use web3::contract::{Contract, Options};
-use futures::executor::block_on;
 use tokio::sync::Mutex;
-use tokio::task::spawn_blocking;
 use crate::{Common, CommonReadonly, MyError};
 use crate::async_db::finish_transaction;
 use crate::errors::{AuthenticationFailedError, NotEnoughFundsError};
-use crate::sql_types::TxsStatusType;
 
 // We follow https://stripe.com/docs/payments/finalize-payments-on-the-server
 
@@ -91,7 +86,7 @@ async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), MyErr
     let amount2 = amount.clone(); // superfluous?
     let mut common = common.lock().await; // locks for all duration of the function
     let conn = &mut common.db; // locks for all duration of the function
-    let mut trans = conn.transaction().await?;
+    let trans = conn.transaction().await?;
     let result = { // block to limit scope of trans0
         let trans0 = &trans;
         let do_it = || async move {
