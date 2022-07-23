@@ -199,13 +199,13 @@ async fn main() -> Result<(), MyError> {
     let readonly = Arc::new(readonly);
     let common2 = common.clone();
     let readonly2 = readonly.clone();
-    let common2 = &common2; // needed?
+    let common2x = &common2; // needed?
     let readonly2 = &readonly2; // needed?
     scope(|scope| {
         // TODO: Initialize common.transactions_awaited from DB.
         let my_loop = move || async move {
             let txs_iter =
-                common2.lock().await.db.query("SELECT * FROM txs WHERE status='created'", &[])
+                common2x.lock().await.db.query("SELECT * FROM txs WHERE status='created'", &[])
                     .await?
                     .into_iter();
             for tx in txs_iter {
