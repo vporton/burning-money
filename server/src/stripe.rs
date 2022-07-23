@@ -183,7 +183,6 @@ pub async fn confirm_payment(
     match intent.get("status").unwrap().as_str().unwrap() { // TODO: unwrap()
         "succeeded" => {
             let collateral_amount = fiat_to_crypto(&*readonly, fiat_amount).await?;
-            // FIXME: Transaction.
             let common2 = (**common).clone();
             let conn = &mut common.lock().await.db; // FIXME: blocks for too long, need pool.
             let (trans, /*do_it*/) = {
