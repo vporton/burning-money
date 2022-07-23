@@ -1,6 +1,5 @@
 use std::future::Future;
 use tokio::task::spawn_blocking;
-use tokio_postgres::Transaction;
 
 // pub async fn transaction<C: Connection, T, E, F>(conn: &mut C, f: F) -> Result<T, E>
 //     where
@@ -21,7 +20,10 @@ use tokio_postgres::Transaction;
 //     }
 // }
 
-pub async fn finish_transaction<T, E>(trans: &tokio_postgres::Transaction, value: Result<T, E>) -> Result<T, E> {
+pub async fn finish_transaction<T, E: From<tokio_postgres::Error>>(
+    trans: tokio_postgres::Transaction<'_>,
+    value: Result<T, E>
+) -> Result<T, E> {
     match value {
         Ok(value) => {
             trans.commit().await?;

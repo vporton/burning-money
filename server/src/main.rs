@@ -193,7 +193,7 @@ async fn main() -> Result<(), MyError> {
             }
             Ok::<_, MyError>(())
         };
-        finish_transaction(trans, do_it()).await?;
+        finish_transaction(trans, do_it().await).await?;
     }
 
     let readonly = Arc::new(readonly);
@@ -205,7 +205,9 @@ async fn main() -> Result<(), MyError> {
         // TODO: Initialize common.transactions_awaited from DB.
         let my_loop = move || async move {
             let txs_iter =
-                common2.lock().await.db.query("SELECT * FROM txs WHERE status='created'").await?.into_iter();
+                common2.lock().await.db.query("SELECT * FROM txs WHERE status='created'", &[])
+                    .await?
+                    .into_iter();
             for tx in txs_iter {
                 let tx = Tx {
                     id: tx.get("id"),
