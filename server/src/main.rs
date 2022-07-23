@@ -23,13 +23,10 @@ use web3::signing::{Key, SecretKeyRef};
 use web3::transports::Http;
 use web3::types::{Address, BlockId, H256};
 use web3::Web3;
-use futures::executor::block_on;
 use log::error;
-use tokio::{spawn, task};
-use tokio::task::{spawn_blocking, spawn_local};
+use tokio::spawn;
 use tokio_postgres::NoTls;
 use web3::api::Namespace;
-use tokio_scoped::scope;
 use web3::api::EthFilter;
 use crate::async_db::finish_transaction;
 use crate::errors::MyError;
@@ -150,7 +147,6 @@ async fn main() -> Result<(), MyError> {
     let addresses = addresses.get(&config.ethereum_network).unwrap(); // TODO: unwrap()
 
     let transport = Http::new(&config2.ethereum_endpoint)?;
-    let transport2 = transport.clone();
 
     let readonly = CommonReadonly {
         config,

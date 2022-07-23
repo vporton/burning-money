@@ -2547,7 +2547,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-postgres",
- "tokio-scoped",
  "toml",
  "web3 0.18.0 (git+https://github.com/vporton/rust-web3?branch=feature/80_bit_token)",
 ]
@@ -3077,16 +3076,6 @@ dependencies = [
  "socket2",
  "tokio",
  "tokio-util 0.7.3",
-]
-
-[[package]]
-name = "tokio-scoped"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4beb8ba13bc53ac53ce1d52b42f02e5d8060f0f42138862869beb769722b256"
-dependencies = [
- "tokio",
- "tokio-stream",
 ]
 
 [[package]]
