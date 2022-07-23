@@ -185,27 +185,23 @@ pub async fn confirm_payment(
             let collateral_amount = fiat_to_crypto(&*readonly, fiat_amount).await?;
             let common2 = (**common).clone();
             let conn = &mut common.lock().await.db; // FIXME: blocks for too long, need pool.
-            let (trans, /*do_it*/) = {
+            let trans = {
                 let trans = conn.transaction().await?;
                 let trans0 = &trans;
-                // let do_it = move || async move {
-                    lock_funds(common2, collateral_amount).await?;
-                    finalize_payment(form.payment_intent_id.as_str(), &*readonly).await?;
-                    trans0.execute(
-                        "INSERT INTO txs SET user_id=$1, eth_account=$2, usd_amount=$3, crypto_amount=$4, bid_date=$5",
-                        &[
-                            &ident.id()?.parse::<i64>()?,
-                            &<Address>::from_str(&form.crypto_account)?.as_bytes(),
-                            &fiat_amount,
-                            &collateral_amount,
-                            &DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp(),
-                        ],
-                    ).await?;
-                    // Ok::<_, MyError>(())
-                // };
-                (trans, /*do_it*/)
+                lock_funds(common2, collateral_amount).await?;
+                finalize_payment(form.payment_intent_id.as_str(), &*readonly).await?;
+                trans0.execute(
+                    "INSERT INTO txs SET user_id=$1, eth_account=$2, usd_amount=$3, crypto_amount=$4, bid_date=$5",
+                    &[
+                        &ident.id()?.parse::<i64>()?,
+                        &<Address>::from_str(&form.crypto_account)?.as_bytes(),
+                        &fiat_amount,
+                        &collateral_amount,
+                        &DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp(),
+                    ],
+                ).await?;
+                trans
             };
-            // do_it().await;
             finish_transaction(trans, Ok::<_, MyError>(())).await?;
             common.lock().await.notify_transaction_tx.send(())?;
         }
