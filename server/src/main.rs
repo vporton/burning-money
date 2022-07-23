@@ -150,7 +150,7 @@ async fn main() -> Result<(), MyError> {
     let addresses = addresses.get(&config.ethereum_network).unwrap(); // TODO: unwrap()
 
     let transport = Http::new(&config2.ethereum_endpoint)?;
-    let transport2 = &transport.clone();
+    let transport2 = transport.clone();
 
     let readonly = CommonReadonly {
         config,
@@ -199,11 +199,16 @@ async fn main() -> Result<(), MyError> {
     let readonly = Arc::new(readonly);
     let common2 = common.clone();
     let readonly2 = readonly.clone();
-    let common2x = &common2; // needed?
-    let readonly2 = &readonly2; // needed?
-    scope(|scope| {
-        // TODO: Initialize common.transactions_awaited from DB.
-        let my_loop = move || async move {
+    let common2x = common2.clone(); // needed?
+    let readonly2 = readonly2.clone(); // needed?
+
+    // TODO: Initialize common.transactions_awaited from DB.
+    let my_loop = move || {
+        let common2x = common2x.clone();
+        let readonly2 = readonly2.clone(); // needed?
+        async move {
+            let common2x = common2x.clone();
+            let readonly2 = readonly2.clone(); // needed?
             let txs_iter =
                 common2x.lock().await.db.query("SELECT * FROM txs WHERE status='created'", &[])
                     .await?
@@ -219,10 +224,10 @@ async fn main() -> Result<(), MyError> {
                     status: tx.get("status"),
                     tx_id: tx.get("tx_id"),
                 };
-                exchange_item(tx, common2x.clone(), readonly2).await?;
+                exchange_item(tx, common2x.clone(), &readonly2).await?;
             }
             loop { // TODO: Interrupt loop on exit.
-                let eth = EthFilter::new(transport2.clone());
+                let eth = EthFilter::new(readonly2.web3.transport());
                 let filter = eth.create_blocks_filter().await?;
                 let mut stream = Box::pin(filter.stream(Duration::from_millis(2000))); // TODO
                 let readonly = readonly2.clone();
@@ -253,60 +258,55 @@ async fn main() -> Result<(), MyError> {
             }
             #[allow(unreachable_code)]
             Ok::<_, MyError>(())
-        };
-        scope.spawn(async move {
-            loop {
-                if let Err(err) = my_loop().await {
-                    error!("Error processing transactions: {}", err);
-                }
+        }
+    };
+
+    spawn(async move {
+        loop {
+            if let Err(err) = my_loop().await {
+                error!("Error processing transactions: {}", err);
             }
-        });
+        }
+    });
 
-        let factory = move || {
-            let cors = Cors::default() // Construct CORS middleware builder
-                .allowed_origin(&config2.frontend_url_prefix)
-                .supports_credentials();
-            let mother_hash = cookie::Key::from(config2.secrets.mother_hash.clone().as_bytes());
-            App::new()
-                .wrap(IdentityMiddleware::default())
-                .wrap(SessionMiddleware::builder(CookieSessionStore::default(), mother_hash)
-                    .cookie_secure(false) // TODO: only when testing
-                    .build())
-                .wrap(cors)
-                // .app_data(Data::new(config2.clone()))
-                .app_data(Data::new(common.clone()))
-                .app_data(Data::new(readonly.clone()))
-                .service(user_identity)
-                .service(user_register)
-                .service(user_login)
-                // .service(user_logout) // TODO
-                .service(about_us)
-                .service(stripe_public_key)
-                .service(create_payment_intent)
-                .service(
-                    actix_files::Files::new("/media", "media").use_last_modified(true),
-                )
-                .default_service(
-                    web::route().to(not_found)
-                )
-        };
+    let factory = move || {
+        let cors = Cors::default() // Construct CORS middleware builder
+            .allowed_origin(&config2.frontend_url_prefix)
+            .supports_credentials();
+        let mother_hash = cookie::Key::from(config2.secrets.mother_hash.clone().as_bytes());
+        App::new()
+            .wrap(IdentityMiddleware::default())
+            .wrap(SessionMiddleware::builder(CookieSessionStore::default(), mother_hash)
+                .cookie_secure(false) // TODO: only when testing
+                .build())
+            .wrap(cors)
+            // .app_data(Data::new(config2.clone()))
+            .app_data(Data::new(common.clone()))
+            .app_data(Data::new(readonly.clone()))
+            .service(user_identity)
+            .service(user_register)
+            .service(user_login)
+            // .service(user_logout) // TODO
+            .service(about_us)
+            .service(stripe_public_key)
+            .service(create_payment_intent)
+            .service(
+                actix_files::Files::new("/media", "media").use_last_modified(true),
+            )
+            .default_service(
+                web::route().to(not_found)
+            )
+    };
 
-        block_on(async { // FIXME
-            // task::spawn_local(async move {
-                if is_running_on_lambda() {
-                    // run_actix_on_lambda(factory).await?; // Run on AWS Lambda. // TODO
-                } else {
-                    match HttpServer::new(factory).bind((config2.host.as_str(), config2.port)) {
-                        Ok(server) => if let Err(err) = server.run().await {
-                            error!("Error running HTTP server: {}", err);
-                        },
-                        Err(err) => error!("Error binding HTTP server: {}", err),
-                    }
-                }
-                // Ok::<_, MyError>(())
-            // }).await.unwrap();
-            // Ok::<_, MyError>(())
-        })?
-    })?;
+    if is_running_on_lambda() {
+        // run_actix_on_lambda(factory).await?; // Run on AWS Lambda. // TODO
+    } else {
+        match HttpServer::new(factory).bind((config2.host.as_str(), config2.port)) {
+            Ok(server) => if let Err(err) = server.run().await {
+                error!("Error running HTTP server: {}", err);
+            },
+            Err(err) => error!("Error binding HTTP server: {}", err),
+        }
+    }
     Ok(())
 }
