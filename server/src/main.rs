@@ -164,7 +164,7 @@ async fn main() -> Result<(), MyError> {
     };
     let (notify_transaction_tx, notify_transaction_rx) = mpsc::unbounded_channel();
     let (client, connection) =
-        tokio_postgres::connect(config.database.conn_string.as_str(), NoTls).await?;
+        tokio_postgres::connect(config2.database.conn_string.as_str(), NoTls).await?;
     tokio::spawn(async move { // TODO: Stop it how?
         if let Err(e) = connection.await {
             eprintln!("connection error: {}", e);
@@ -181,19 +181,24 @@ async fn main() -> Result<(), MyError> {
     let funds = readonly.web3.eth().balance(
          SecretKeyRef::new(&readonly.ethereum_key).address(), None).await?;
     let funds = funds.as_u64() as i64;
-    let trans = common.lock().await.db.transaction().await?;
-    { // block
-        let conn = &mut common.lock().await.db;
-        let do_it = move || async move {
-            let v_free_funds = conn.query_opt("SELECT free_funds FROM global FRO UPDATE", &[]).await?;
-            if let Some(_v_free_funds) = v_free_funds {
-                conn.execute("UPDATE global SET free_funds=$1", &[&funds]).await?;
-            } else {
-                conn.execute("INSERT global SET free_funds=$1", &[&funds]).await?;
-            }
-            Ok::<_, MyError>(())
-        };
-        finish_transaction(trans, do_it().await).await?;
+    { // restrict locks duration
+        let mut common = common.lock().await;
+        let trans = common.db.transaction().await?;
+        // let conn = &mut common.db;
+        // let do_it = { // block
+            let trans0 = &trans;
+            let do_it = move || async move {
+                let v_free_funds = trans0.query_opt("SELECT free_funds FROM global FRO UPDATE", &[]).await?;
+                if let Some(_v_free_funds) = v_free_funds {
+                    trans0.execute("UPDATE global SET free_funds=$1", &[&funds]).await?;
+                } else {
+                    trans0.execute("INSERT global SET free_funds=$1", &[&funds]).await?;
+                }
+                Ok::<_, MyError>(())
+            };
+        //     do_it
+        // };
+        finish_transaction(trans, Ok::<_, MyError>(())).await?;
     }
 
     let readonly = Arc::new(readonly);
@@ -219,7 +224,7 @@ async fn main() -> Result<(), MyError> {
                     status: tx.get("status"),
                     tx_id: tx.get("tx_id"),
                 };
-                exchange_item(tx, common2, readonly2).await?;
+                exchange_item(tx, common2x.clone(), readonly2).await?;
             }
             loop { // TODO: Interrupt loop on exit.
                 let eth = EthFilter::new(transport2.clone());
@@ -227,7 +232,7 @@ async fn main() -> Result<(), MyError> {
                 let mut stream = Box::pin(filter.stream(Duration::from_millis(2000))); // TODO
                 let readonly = readonly2.clone();
                 loop {
-                    let common = common2.clone();
+                    let common = common2x.clone();
                     // FIXME: What to do on errors?
                     if let Some(block_hash) = stream.next().await {
                         let block_hash = block_hash?;
@@ -246,7 +251,7 @@ async fn main() -> Result<(), MyError> {
                     }
                 }
                 let rc = { // not to lock for too long
-                    let guard = common2.lock().await;
+                    let guard = common2x.lock().await;
                     guard.notify_transaction_rx.clone()
                 };
                 rc.lock().await.recv().await;
