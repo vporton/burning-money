@@ -55,6 +55,7 @@ pub struct Config {
     frontend_url_prefix: String,
     ethereum_network: String,
     ethereum_endpoint: String, // or Url?
+    pull_ethereum: u16,
     addresses_file: String,
     secrets: SecretsConfig,
     database: DBConfig,
@@ -239,7 +240,7 @@ async fn main() -> Result<(), MyError> {
             loop {
                 let eth = EthFilter::new(readonly2.web3.transport());
                 let filter = eth.create_blocks_filter().await?;
-                let mut stream = Box::pin(filter.stream(Duration::from_millis(2000))); // TODO
+                let mut stream = Box::pin(filter.stream(Duration::from_millis(config2.pull_ethereum as u64)));
                 let readonly = readonly2.clone();
                 loop {
                     let common = common2x.clone();

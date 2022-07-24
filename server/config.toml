@@ -5,6 +5,7 @@ url_prefix = "http://localhost"
 frontend_url_prefix = "http://localhost:3000"
 ethereum_endpoint = "http://localhost:8545"
 ethereum_network = "local"
+pull_ethereum = 2000  # msec
 addresses_file = "../dist/deployed-addresses.json"
 
 [secrets]
