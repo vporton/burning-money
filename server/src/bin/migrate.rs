@@ -139,7 +139,7 @@ async fn main() -> Result<(), MyError> {
 
     let (mut client, connection) =
         tokio_postgres::connect(config.database.conn_string.as_str(), NoTls).await?;
-    tokio::spawn(async move { // TODO: Stop it how?
+    tokio::spawn(async move {
         if let Err(e) = connection.await {
             eprintln!("connection error: {}", e);
         }
