@@ -3082,8 +3082,7 @@ dependencies = [
 [[package]]
 name = "tokio-postgres-migration"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f4cbd11616abaecba7df0fa9c35929b70e41d8198db394ae22626aa68e252a4"
+source = "git+https://github.com/vporton/tokio-postgres-migration#46dbde05d672d895a6b963901976f0fc4a0ebeef"
 dependencies = [
  "log",
  "tokio-postgres",
