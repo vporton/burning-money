@@ -12,22 +12,6 @@ use lambda_web::LambdaError;
 use serde::Serialize;
 use tokio::task::JoinError;
 
-// #[derive(Debug)]
-// pub struct CannotLoadOrGenerateEthereumKeyError(String);
-//
-// impl CannotLoadOrGenerateEthereumKeyError {
-//     // TODO
-//     pub fn new(msg: String) -> Self {
-//         Self(msg)
-//     }
-// }
-//
-// impl Display for CannotLoadOrGenerateEthereumKeyError {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "Cannot load or generate Ethereum key: {}", self.0)
-//     }
-// }
-
 #[derive(Debug)]
 pub struct AuthenticationFailedError;
 
@@ -157,7 +141,7 @@ impl ResponseError for MyError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::AuthenticationFailed(_) => StatusCode::UNAUTHORIZED,
-            _ => StatusCode::INTERNAL_SERVER_ERROR, // TODO
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
     fn error_response(&self) -> HttpResponse {
