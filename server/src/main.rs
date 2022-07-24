@@ -48,6 +48,7 @@ static APP_USER_AGENT: &str = "CardToken seller";
 
 #[derive(Clone, Deserialize)]
 pub struct Config {
+    testing: bool,
     host: String,
     port: u16,
     url_prefix: String,
@@ -288,7 +289,7 @@ async fn main() -> Result<(), MyError> {
         App::new()
             .wrap(IdentityMiddleware::default())
             .wrap(SessionMiddleware::builder(CookieSessionStore::default(), mother_hash)
-                .cookie_secure(false) // TODO: only when testing
+                .cookie_secure(!config2.testing)
                 .build())
             .wrap(cors)
             // .app_data(Data::new(config2.clone()))
