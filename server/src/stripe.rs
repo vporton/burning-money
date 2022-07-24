@@ -185,13 +185,9 @@ pub async fn confirm_payment(
             let collateral_amount = fiat_to_crypto(&*readonly, fiat_amount).await?;
             let common2 = (**common).clone();
             lock_funds(common2.clone(), collateral_amount).await?;
-            if let Err(err) = finalize_payment(form.payment_intent_id.as_str(), &*readonly).await {
-                lock_funds(common2.clone(), -collateral_amount).await?;
-                return Err(err.into());
-            }
-            { // restrict lock duration
+            let id: i64 = { // restrict lock duration
                 let conn = &mut common.lock().await.db;
-                conn.execute(
+                conn.query_one(
                     "INSERT INTO txs SET user_id=$1, eth_account=$2, usd_amount=$3, crypto_amount=$4, bid_date=$5",
                     &[
                         &ident.id()?.parse::<i64>()?,
@@ -200,7 +196,17 @@ pub async fn confirm_payment(
                         &collateral_amount,
                         &DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp(),
                     ],
-                ).await?;
+                ).await?.get(0)
+            };
+            if let Err(err) = finalize_payment(form.payment_intent_id.as_str(), &*readonly).await {
+                lock_funds(common2.clone(), -collateral_amount).await?;
+                let conn = &mut common.lock().await.db; // short lock duration
+                conn.execute("DELETE FROM txs WHERE id=$1", &[&id]).await?;
+                return Err(err.into());
+            }
+            { // restrict lock duration
+                let conn = &mut common.lock().await.db;
+                conn.execute("UPDATE txs WHERE id=$1 SET status='ordered'", &[&id]).await?;
             }
             common.lock().await.notify_transaction_tx.send(())?;
         }
