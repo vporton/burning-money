@@ -163,7 +163,7 @@ async fn main() -> Result<(), MyError> {
     let (notify_transaction_tx, notify_transaction_rx) = mpsc::unbounded_channel();
     let (client, connection) =
         tokio_postgres::connect(config2.database.conn_string.as_str(), NoTls).await?;
-    tokio::spawn(async move { // TODO: Stop it how?
+    tokio::spawn(async move {
         if let Err(e) = connection.await {
             eprintln!("connection error: {}", e);
         }
