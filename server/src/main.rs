@@ -25,6 +25,7 @@ use web3::types::{Address, BlockId, H256};
 use web3::Web3;
 use log::error;
 use tokio::spawn;
+use tokio_interruptible_future::interruptible;
 use tokio_postgres::NoTls;
 use web3::api::Namespace;
 use web3::api::EthFilter;
@@ -92,6 +93,7 @@ pub struct CommonReadonly {
 pub struct Common {
     db: tokio_postgres::Client,
     transactions_awaited: HashSet<H256>,
+    program_finished_tx: async_channel::Sender<()>,
     // TODO: Unbounded?
     notify_transaction_tx: mpsc::UnboundedSender<()>,
     notify_transaction_rx: Arc<Mutex<mpsc::UnboundedReceiver<()>>>, // in Arc not to lock the entire struct for too long
@@ -169,9 +171,11 @@ async fn main() -> Result<(), MyError> {
         }
     });
 
+    let (program_finished_tx, program_finished_rx) = async_channel::bounded(1);
     let common = Arc::new(Mutex::new(Common {
         db: client,
         transactions_awaited: HashSet::new(),
+        program_finished_tx,
         notify_transaction_tx,
         notify_transaction_rx: Arc::new(Mutex::new(notify_transaction_rx)),
     }));
@@ -266,13 +270,15 @@ async fn main() -> Result<(), MyError> {
         }
     };
 
-    spawn(async move {
+    spawn(interruptible(program_finished_rx, Box::pin(async move {
         loop {
             if let Err(err) = my_loop().await {
                 error!("Error processing transactions: {}", err);
             }
         }
-    });
+        #[allow(unreachable_code)]
+        Ok::<(), MyError>(())
+    })));
 
     let factory = move || {
         let cors = Cors::default() // Construct CORS middleware builder
@@ -313,5 +319,6 @@ async fn main() -> Result<(), MyError> {
             Err(err) => error!("Error binding HTTP server: {}", err),
         }
     }
+    common2.lock().await.program_finished_tx.send(()).await?;
     Ok(())
 }

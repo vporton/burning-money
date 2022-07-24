@@ -11,6 +11,7 @@ use lambda_web::LambdaError;
 // use stripe::{RequestError, StripeError};
 use serde::Serialize;
 use tokio::task::JoinError;
+use tokio_interruptible_future::InterruptError;
 
 #[derive(Debug)]
 pub struct AuthenticationFailedError;
@@ -44,6 +45,7 @@ impl Display for NotEnoughFundsError {
 
 #[derive(Debug)]
 pub enum MyError {
+    Interrupt(InterruptError),
     Template(askama::Error),
     IO(io::Error),
     Secp256k1(secp256k1::Error),
@@ -69,6 +71,7 @@ pub enum MyError {
     Blocking(BlockingError),
     Join(JoinError),
     TokioPostgres(tokio_postgres::Error),
+    AsyncChannelSendEmpty(async_channel::SendError<()>),
 }
 
 #[derive(Serialize)]
@@ -107,6 +110,7 @@ impl std::error::Error for MyError { }
 impl Display for MyError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Interrupt(_) => write!(f, "Fiber intrerrupted."),
             Self::Template(err) => write!(f, "Error in Askama template: {err}"),
             Self::IO(err) => write!(f, "I/O error: {err}"),
             Self::Secp256k1(err) => write!(f, "(De)ciphering error: {err}"),
@@ -133,6 +137,7 @@ impl Display for MyError {
             Self::Blocking(_) => write!(f, "Blocking error."),
             Self::Join(_) => write!(f, "Join error."),
             Self::TokioPostgres(err) => write!(f, "Postgres error: {}", err),
+            Self::AsyncChannelSendEmpty(err) => write!(f, "Async send error: {}", err),
         }
     }
 }
@@ -148,6 +153,12 @@ impl ResponseError for MyError {
         HttpResponse::build(self.status_code())
             .insert_header(ContentType::json())
             .body(serde_json::to_string(&self.json()).unwrap())
+    }
+}
+
+impl From<InterruptError> for MyError {
+    fn from(value: InterruptError) -> Self {
+        Self::Interrupt(value)
     }
 }
 
@@ -297,4 +308,10 @@ impl From<tokio_postgres::Error> for MyError {
     fn from(value: tokio_postgres::Error) -> Self {
     Self::TokioPostgres(value)
 }
+}
+
+impl From<async_channel::SendError<()>> for MyError {
+    fn from(value: async_channel::SendError<()>) -> Self {
+        Self::AsyncChannelSendEmpty(value)
+    }
 }
