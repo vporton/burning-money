@@ -8,7 +8,7 @@ CREATE TABLE txs (
     usd_amount BIGINT NOT NULL,
     crypto_amount BIGINT NOT NULL,
     bid_date BIGINT NOT NULL,
-    status txs_status_type NOT NULL DEFAULT 'created',
+    status txs_status_type NOT NULL DEFAULT 'before_ordered',
     tx_id BYTEA NOT NULL DEFAULT '', -- Ethereum tx ID. -- FIXME: Should be NULL.
     CONSTRAINT txs_user_fk FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
