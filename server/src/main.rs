@@ -235,7 +235,7 @@ async fn main() -> Result<(), MyError> {
                 };
                 exchange_item(tx, common2x.clone(), &readonly2).await?;
             }
-            loop { // TODO: Interrupt loop on exit.
+            loop {
                 let eth = EthFilter::new(readonly2.web3.transport());
                 let filter = eth.create_blocks_filter().await?;
                 let mut stream = Box::pin(filter.stream(Duration::from_millis(2000))); // TODO
