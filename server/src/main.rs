@@ -192,13 +192,22 @@ async fn main() -> Result<(), MyError> {
         finish_transaction(trans, Ok::<_, MyError>(())).await?;
     }
 
+    { // restrict lock duration
+        let mut common = common.lock().await;
+        common.transactions_awaited = HashSet::from_iter(common.db
+            .query("SELECT tx_id FROM txs WHERE status = 'submitted_to_blockchain'", &[])
+            .await?
+            .into_iter()
+            .map(|row| H256::from_slice(row.get(0)))
+        );
+    }
+
     let readonly = Arc::new(readonly);
     let common2 = common.clone();
     let readonly2 = readonly.clone();
     let common2x = common2.clone(); // needed?
     let readonly2 = readonly2.clone(); // needed?
 
-    // TODO: Initialize common.transactions_awaited from DB.
     let my_loop = move || {
         let common2x = common2x.clone();
         let readonly2 = readonly2.clone(); // needed?
