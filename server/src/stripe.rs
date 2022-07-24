@@ -120,7 +120,7 @@ async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bi
         "bidOn",
         (bid_date.timestamp(), crypto_amount, crypto_account),
         Options::default(),
-        readonly.ethereum_key.clone(), // TODO: seems to claim that it's insecure: https://docs.rs/web3/latest/web3/signing/trait.Key.html
+        readonly.ethereum_key.clone(),
     ).await?;
 
     Ok(tx)
