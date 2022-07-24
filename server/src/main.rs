@@ -206,7 +206,7 @@ async fn main() -> Result<(), MyError> {
             let common2x = common2x.clone();
             let readonly2 = readonly2.clone(); // needed?
             let txs_iter =
-                common2x.lock().await.db.query("SELECT * FROM txs WHERE status='created'", &[])
+                common2x.lock().await.db.query("SELECT * FROM txs WHERE status='ordered'", &[])
                     .await?
                     .into_iter();
             for tx in txs_iter {
