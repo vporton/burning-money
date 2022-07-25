@@ -176,7 +176,7 @@ pub async fn confirm_payment(
     }
 
     if intent.get("currency").ok_or(StripeError::new())?.as_str().ok_or(StripeError::new())? != "usd" {
-        return Ok(HttpResponse::BadRequest().body("Wrong currency")); // TODO: JSON
+        return Err(StripeError::new().into());
     }
     let fiat_amount = intent.get("amount").ok_or(StripeError::new())?.as_i64().ok_or(StripeError::new())?;
 
