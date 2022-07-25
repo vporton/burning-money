@@ -148,7 +148,7 @@ async fn main() -> Result<(), MyError> {
     let config2 = config.clone();
 
     let addresses: Value = serde_json::from_str(fs::read_to_string(config.addresses_file.as_str())?.as_str())?;
-    let addresses = addresses.get(&config.ethereum_network).unwrap(); // TODO: unwrap()
+    let addresses = addresses.get(&config.ethereum_network).ok_or(CannotLoadDataError::new())?;
 
     let transport = Http::new(&config2.ethereum_endpoint)?;
 
