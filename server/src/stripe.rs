@@ -13,7 +13,7 @@ use web3::contract::{Contract, Options};
 use tokio::sync::Mutex;
 use crate::{Common, CommonReadonly, MyError};
 use crate::async_db::finish_transaction;
-use crate::errors::{AuthenticationFailedError, NotEnoughFundsError};
+use crate::errors::{AuthenticationFailedError, NotEnoughFundsError, StripeError};
 
 // We follow https://stripe.com/docs/payments/finalize-payments-on-the-server
 
@@ -171,16 +171,16 @@ pub async fn confirm_payment(
         .basic_auth::<&str, &str>(&readonly.config.stripe.secret_key, None)
         .send().await?
         .json().await?;
-    if intent.get("metadata[user]").unwrap().as_str().unwrap() != ident.id()? { // TODO: unwrap()
+    if intent.get("metadata[user]").ok_or(StripeError::new())?.as_str().ok_or(StripeError::new())? != ident.id()? {
         return Err(AuthenticationFailedError::new().into());
     }
 
-    if intent.get("currency").unwrap().as_str() != Some("usd") { // TODO: unwrap()
+    if intent.get("currency").ok_or(StripeError::new())?.as_str().ok_or(StripeError::new())? != "usd" {
         return Ok(HttpResponse::BadRequest().body("Wrong currency")); // TODO: JSON
     }
-    let fiat_amount = intent.get("amount").unwrap().as_i64().unwrap(); // TODO: unwrap()
+    let fiat_amount = intent.get("amount").ok_or(StripeError::new())?.as_i64().ok_or(StripeError::new())?;
 
-    match intent.get("status").unwrap().as_str().unwrap() { // TODO: unwrap()
+    match intent.get("status").ok_or(StripeError::new())?.as_str().ok_or(StripeError::new())? {
         "succeeded" => {
             let collateral_amount = fiat_to_crypto(&*readonly, fiat_amount).await?;
             let common2 = (**common).clone();

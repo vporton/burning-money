@@ -43,6 +43,37 @@ impl Display for NotEnoughFundsError {
     }
 }
 
+/// Stripe misfunctions.
+#[derive(Debug)]
+pub struct StripeError;
+
+impl StripeError {
+    pub fn new() -> Self {
+        Self { }
+    }
+}
+
+impl Display for StripeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Stripe error.")
+    }
+}
+
+#[derive(Debug)]
+pub struct CannotLoadDataError;
+
+impl CannotLoadDataError {
+    pub fn new() -> Self {
+        Self { }
+    }
+}
+
+impl Display for CannotLoadDataError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Cannot load data.")
+    }
+}
+
 #[derive(Debug)]
 pub enum MyError {
     Interrupt(InterruptError),
@@ -72,6 +103,8 @@ pub enum MyError {
     Join(JoinError),
     TokioPostgres(tokio_postgres::Error),
     AsyncChannelSendEmpty(async_channel::SendError<()>),
+    Stripe(StripeError),
+    CannotLoadData(CannotLoadDataError),
 }
 
 #[derive(Serialize)]
@@ -138,6 +171,8 @@ impl Display for MyError {
             Self::Join(_) => write!(f, "Join error."),
             Self::TokioPostgres(err) => write!(f, "Postgres error: {}", err),
             Self::AsyncChannelSendEmpty(err) => write!(f, "Async send error: {}", err),
+            Self::Stripe(_) => write!(f, "Stripe API failed."),
+            Self::CannotLoadData(_) => write!(f, "Cannot load data."),
         }
     }
 }
@@ -313,5 +348,17 @@ impl From<tokio_postgres::Error> for MyError {
 impl From<async_channel::SendError<()>> for MyError {
     fn from(value: async_channel::SendError<()>) -> Self {
         Self::AsyncChannelSendEmpty(value)
+    }
+}
+
+impl From<StripeError> for MyError {
+    fn from(value: StripeError) -> Self {
+        Self::Stripe(value)
+    }
+}
+
+impl From<CannotLoadDataError> for MyError {
+    fn from(value: CannotLoadDataError) -> Self {
+        Self::CannotLoadData(value)
     }
 }

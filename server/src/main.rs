@@ -30,7 +30,7 @@ use tokio_postgres::NoTls;
 use web3::api::Namespace;
 use web3::api::EthFilter;
 use crate::async_db::finish_transaction;
-use crate::errors::MyError;
+use crate::errors::{CannotLoadDataError, MyError};
 use crate::models::Tx;
 use crate::pages::{about_us, not_found};
 use crate::stripe::{create_payment_intent, exchange_item, stripe_public_key};
@@ -157,7 +157,7 @@ async fn main() -> Result<(), MyError> {
         ethereum_key: Arc::new(eth_account),
         addresses: Addresses {
             // TODO: `expect()`
-            token: <Address>::from_str(addresses.get("Token").expect("Can't parse addresses file").as_str().expect("Can't parse addresses file"))?,
+            token: <Address>::from_str(addresses.get("Token").ok_or(CannotLoadDataError::new())?.as_str().ok_or(CannotLoadDataError::new())?)?,
             collateral_oracle:  <Address>::from_str(addresses.get("collateralOracle").expect("Can't parse addresses file").as_str().expect("Can't parse addresses file"))?,
         },
         web3: {
