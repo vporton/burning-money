@@ -6,6 +6,7 @@ use actix_identity::Identity;
 use actix_web::{get, post, Responder, web, HttpResponse};
 use actix_web::http::header::CONTENT_TYPE;
 use chrono::{DateTime, NaiveDateTime, Utc};
+use log::debug;
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -89,9 +90,11 @@ pub async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), M
         common.locked_funds - MAX_GAS
     };
     if locked_funds + amount >= common.balance {
+        debug!("{} funds cannot be locked.", amount);
         return Err(NotEnoughFundsError::new().into());
     }
     common.locked_funds += amount;
+    debug!("{} funds locked.", amount);
     Ok(())
 }
 
