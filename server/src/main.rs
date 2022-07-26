@@ -29,7 +29,7 @@ use tokio_interruptible_future::interruptible;
 use tokio_postgres::NoTls;
 use web3::api::Namespace;
 use web3::api::EthFilter;
-use crate::errors::{CannotLoadDataError, MyError};
+use crate::errors::{CannotLoadDataError, MyError, StripeError};
 use crate::models::Tx;
 use crate::pages::{about_us, not_found};
 use crate::stripe::{create_payment_intent, exchange_item, lock_funds, stripe_public_key};
@@ -109,20 +109,50 @@ struct Cli {
     config: String,
 }
 
+/// Solve any discrepancies caused by the program improperly terminated
+/// TODO: Execute it periodically.
+async fn prepare_data(common: Arc<Mutex<Common>>, readonly: Arc<CommonReadonly>) -> Result<(), MyError> {
+    // TODO: Remove old 'before_ordered' rows.
+
+    // Check unfinished Stripe transactions:
+    let rows = common.lock().await.db
+        .query("SELECT id, payment_intent_id FROM txs WHERE status='before_ordered'", &[]).await?;
+    let client = reqwest::Client::builder()
+        .user_agent(crate::APP_USER_AGENT)
+        .build()?;
+    for row in rows { // TODO: Process in parallel.
+        let id: i64 = row.get(0);
+        let payment_intent_id: &str = row.get(1);
+        let url = format!("https://api.stripe.com/v1/payment_intents/{}", payment_intent_id);
+        let res = client.post(url)
+            .basic_auth::<&str, &str>(&readonly.config.stripe.secret_key, None)
+            .header("Stripe-Version", "2020-08-27; server_side_confirmation_beta=v1") // needed?
+            .send().await?;
+        let j: Value = res.json().await?;
+        if j.get("status").ok_or(StripeError::new())?.as_str().ok_or(StripeError::new())? == "confirmed" {
+            common.lock().await.db
+                .execute("UPDATE txs SET status='ordered' WHERE id=$1", &[&id]).await?;
+            // Will submit to blockchain by `process_current()`.
+        }
+    }
+    // TODO
+    Ok(())
+}
+
 /// Starts a fiber that processes currently added payments.
 async fn process_current(
-    common2x: Arc<Mutex<Common>>,
-    readonly2: Arc<CommonReadonly>,
+    common: Arc<Mutex<Common>>,
+    readonly: Arc<CommonReadonly>,
     program_finished_rx: async_channel::Receiver<()>)
--> Result<(), MyError> {
+    -> Result<(), MyError> {
     let my_loop = move || {
-        let common2x = common2x.clone();
-        let readonly2 = readonly2.clone(); // needed?
+        let common2 = common.clone();
+        let readonly2 = readonly.clone(); // needed?
         async move {
-            let common2x = common2x.clone();
+            let common2 = common2.clone();
             let readonly2 = readonly2.clone(); // needed?
             let txs_iter =
-                common2x.lock().await.db.query("SELECT * FROM txs WHERE status='ordered'", &[])
+                common2.lock().await.db.query("SELECT * FROM txs WHERE status='ordered'", &[])
                     .await?
                     .into_iter();
             for tx in txs_iter {
@@ -136,7 +166,7 @@ async fn process_current(
                     status: tx.get("status"),
                     tx_id: tx.get("tx_id"),
                 };
-                exchange_item(tx, common2x.clone(), &readonly2).await?;
+                exchange_item(tx, common2.clone(), &readonly2).await?;
             }
             let readonly2y = &readonly2;
             loop {
@@ -146,7 +176,7 @@ async fn process_current(
                 let mut stream = Box::pin(filter.stream(Duration::from_millis(config3.pull_ethereum as u64)));
                 let readonly = readonly2.clone();
                 loop {
-                    let common = common2x.clone();
+                    let common = common2.clone();
                     // FIXME: What to do on errors?
                     if let Some(block_hash) = stream.next().await {
                         let block_hash = block_hash?;
@@ -179,7 +209,7 @@ async fn process_current(
                     }
                 }
                 let rc = { // not to lock for too long
-                    let guard = common2x.lock().await;
+                    let guard = common2.lock().await;
                     guard.notify_transaction_rx.clone()
                 };
                 rc.lock().await.recv().await;
@@ -303,6 +333,7 @@ async fn main() -> Result<(), MyError> {
     let common2x = common2.clone(); // needed?
     let readonly2 = readonly2.clone(); // needed?
 
+    prepare_data(common2x.clone(), readonly2.clone()).await?;
     process_current(common2x.clone(), readonly2.clone(), program_finished_rx).await?;
 
     let factory = move || {
