@@ -156,7 +156,7 @@ function PaymentFormContent(props: any) { // TODO: `any`
     return (
         <form onSubmit={e => submitHandler(e)}> {/* FIXME: async */}
             <PaymentElement />
-            <p><button>Invest</button></p>
+            <p><button>Invest</button></p> {/* TODO: Disable button for no accidental repeated clicking. */}
         </form>
     );
 }
