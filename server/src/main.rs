@@ -135,7 +135,9 @@ async fn prepare_data(common: Arc<Mutex<Common>>, readonly: Arc<CommonReadonly>)
             // Will submit to blockchain by `process_current()`.
         }
     }
-    // TODO
+
+    // TODO: Check transactions marked as 'submitted_to_blockchain', but not submitted.
+
     Ok(())
 }
 
