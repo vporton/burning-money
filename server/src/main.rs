@@ -189,18 +189,20 @@ async fn process_current(
                             // (Balance may decrease only after having locked a sum.)
                             for tx in block.transactions {
                                 let row = common.lock().await.db
-                                    .query_one("SELECT id, crypto_amount FROM txs WHERE tx_id=$1", &[&tx.as_bytes()]).await?;
-                                let (id, amount): (i64, i64) = (row.get(0), row.get(1));
-                                { // limit lock duration
-                                    let mut common = common.lock().await;
-                                    if common.transactions_awaited.remove(&tx) {
-                                        common.db.execute(
-                                            "UPDATE txs SET status='confirmed' WHERE id=$1",
-                                            &[&id]
-                                        ).await?;
+                                    .query_opt("SELECT id, crypto_amount FROM txs WHERE tx_id=$1", &[&tx.as_bytes()]).await?;
+                                if let Some(row) = row {
+                                    let (id, amount): (i64, i64) = (row.get(0), row.get(1));
+                                    { // limit lock duration
+                                        let mut common = common.lock().await;
+                                        if common.transactions_awaited.remove(&tx) {
+                                            common.db.execute(
+                                                "UPDATE txs SET status='confirmed' WHERE id=$1",
+                                                &[&id]
+                                            ).await?;
+                                        }
                                     }
+                                    lock_funds(common.clone(), -amount).await?;
                                 }
-                                lock_funds(common.clone(), -amount).await?;
                             }
                             common.lock().await.balance = readonly.web3.eth().balance(
                                 SecretKeyRef::new(&readonly.ethereum_key).address(), None
