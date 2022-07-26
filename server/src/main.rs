@@ -286,7 +286,7 @@ async fn main() -> Result<(), MyError> {
         ethereum_key: Arc::new(eth_account),
         addresses: Addresses {
             token: <Address>::from_str(addresses.get("Token").ok_or(CannotLoadDataError::new())?.as_str().ok_or(CannotLoadDataError::new())?)?,
-            collateral_oracle:  <Address>::from_str(addresses.get("collateralOracle").expect("Can't parse addresses file").as_str().ok_or(CannotLoadDataError::new())?)?,
+            collateral_oracle:  <Address>::from_str(addresses.get("collateralOracle").ok_or(CannotLoadDataError::new())?.as_str().ok_or(CannotLoadDataError::new())?)?,
         },
         web3: {
             Web3::new(transport)
