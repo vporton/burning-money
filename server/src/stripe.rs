@@ -215,7 +215,7 @@ pub async fn confirm_payment(
             common.lock().await.notify_transaction_tx.send(())?;
         }
         "canceled" => {
-            lock_funds((**common).clone(), -fiat_amount).await?;
+            lock_funds((**common).clone(), -fiat_amount).await?; // FIXME: not fiat
         }
         _ => {}
     }
