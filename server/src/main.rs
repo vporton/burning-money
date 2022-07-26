@@ -109,6 +109,98 @@ struct Cli {
     config: String,
 }
 
+async fn process_current(
+    common2x: Arc<Mutex<Common>>,
+    readonly2: Arc<CommonReadonly>,
+    program_finished_rx: async_channel::Receiver<()>)
+-> Result<(), MyError> {
+    let my_loop = move || {
+        let common2x = common2x.clone();
+        let readonly2 = readonly2.clone(); // needed?
+        async move {
+            let common2x = common2x.clone();
+            let readonly2 = readonly2.clone(); // needed?
+            let txs_iter =
+                common2x.lock().await.db.query("SELECT * FROM txs WHERE status='ordered'", &[])
+                    .await?
+                    .into_iter();
+            for tx in txs_iter {
+                let tx = Tx {
+                    id: tx.get("id"),
+                    user_id: tx.get("user_id"),
+                    eth_account: tx.get("eth_account"),
+                    usd_amount: tx.get("usd_amount"),
+                    crypto_amount: tx.get("crypto_amount"),
+                    bid_date: tx.get("bid_date"),
+                    status: tx.get("status"),
+                    tx_id: tx.get("tx_id"),
+                };
+                exchange_item(tx, common2x.clone(), &readonly2).await?;
+            }
+            let readonly2y = &readonly2;
+            loop {
+                let config3 = &readonly2y.config;
+                let eth = EthFilter::new(readonly2.web3.transport());
+                let filter = eth.create_blocks_filter().await?;
+                let mut stream = Box::pin(filter.stream(Duration::from_millis(config3.pull_ethereum as u64)));
+                let readonly = readonly2.clone();
+                loop {
+                    let common = common2x.clone();
+                    // FIXME: What to do on errors?
+                    if let Some(block_hash) = stream.next().await {
+                        let block_hash = block_hash?;
+                        if let Some(block) = readonly.web3.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
+                            // We assume that our account can be funded by others, but only we withdraw.
+                            // First remove from the locked funds, then update balance, for no races.
+                            // (Balance may decrease only after having locked a sum.)
+                            for tx in block.transactions {
+                                let row = common.lock().await.db
+                                    .query_one("SELECT id, crypto_amount FROM txs WHERE tx_id=$1", &[&tx.as_bytes()]).await?;
+                                let (id, amount): (i64, i64) = (row.get(0), row.get(1));
+                                { // limit lock duration
+                                    let mut common = common.lock().await;
+                                    if common.transactions_awaited.remove(&tx) {
+                                        common.db.execute(
+                                            "UPDATE txs SET status='confirmed' WHERE id=$1",
+                                            &[&id]
+                                        ).await?;
+                                    }
+                                }
+                                lock_funds(common.clone(), -amount).await?;
+                            }
+                            common.lock().await.balance = readonly.web3.eth().balance(
+                                SecretKeyRef::new(&readonly.ethereum_key).address(), None
+                            )
+                                .await?.as_u64() as i64;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                let rc = { // not to lock for too long
+                    let guard = common2x.lock().await;
+                    guard.notify_transaction_rx.clone()
+                };
+                rc.lock().await.recv().await;
+            }
+            #[allow(unreachable_code)]
+            Ok::<_, MyError>(())
+        }
+    };
+
+    spawn(interruptible(program_finished_rx, Box::pin(async move {
+        loop {
+            if let Err(err) = my_loop().await {
+                error!("Error processing transactions: {}", err);
+            }
+        }
+        #[allow(unreachable_code)]
+        Ok::<(), MyError>(())
+    })));
+
+    Ok(())
+}
+
 #[actix_web::main]
 async fn main() -> Result<(), MyError> {
     env_logger::builder()
@@ -210,87 +302,7 @@ async fn main() -> Result<(), MyError> {
     let common2x = common2.clone(); // needed?
     let readonly2 = readonly2.clone(); // needed?
 
-    let my_loop = move || {
-        let common2x = common2x.clone();
-        let readonly2 = readonly2.clone(); // needed?
-        async move {
-            let common2x = common2x.clone();
-            let readonly2 = readonly2.clone(); // needed?
-            let txs_iter =
-                common2x.lock().await.db.query("SELECT * FROM txs WHERE status='ordered'", &[])
-                    .await?
-                    .into_iter();
-            for tx in txs_iter {
-                let tx = Tx {
-                    id: tx.get("id"),
-                    user_id: tx.get("user_id"),
-                    eth_account: tx.get("eth_account"),
-                    usd_amount: tx.get("usd_amount"),
-                    crypto_amount: tx.get("crypto_amount"),
-                    bid_date: tx.get("bid_date"),
-                    status: tx.get("status"),
-                    tx_id: tx.get("tx_id"),
-                };
-                exchange_item(tx, common2x.clone(), &readonly2).await?;
-            }
-            loop {
-                let eth = EthFilter::new(readonly2.web3.transport());
-                let filter = eth.create_blocks_filter().await?;
-                let mut stream = Box::pin(filter.stream(Duration::from_millis(config2.pull_ethereum as u64)));
-                let readonly = readonly2.clone();
-                loop {
-                    let common = common2x.clone();
-                    // FIXME: What to do on errors?
-                    if let Some(block_hash) = stream.next().await {
-                        let block_hash = block_hash?;
-                        if let Some(block) = readonly.web3.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
-                            // We assume that our account can be funded by others, but only we withdraw.
-                            // First remove from the locked funds, then update balance, for no races.
-                            // (Balance may decrease only after having locked a sum.)
-                            for tx in block.transactions {
-                                let row = common.lock().await.db
-                                    .query_one("SELECT id, crypto_amount FROM txs WHERE tx_id=$1", &[&tx.as_bytes()]).await?;
-                                let (id, amount): (i64, i64) = (row.get(0), row.get(1));
-                                { // limit lock duration
-                                    let mut common = common.lock().await;
-                                    if common.transactions_awaited.remove(&tx) {
-                                        common.db.execute(
-                                            "UPDATE txs SET status='confirmed' WHERE id=$1",
-                                            &[&id]
-                                        ).await?;
-                                    }
-                                }
-                                lock_funds(common.clone(), -amount);
-                            }
-                            common.lock().await.balance = readonly.web3.eth().balance(
-                                SecretKeyRef::new(&readonly.ethereum_key).address(), None
-                            )
-                                .await?.as_u64() as i64;
-                        }
-                    } else {
-                        break;
-                    }
-                }
-                let rc = { // not to lock for too long
-                    let guard = common2x.lock().await;
-                    guard.notify_transaction_rx.clone()
-                };
-                rc.lock().await.recv().await;
-            }
-            #[allow(unreachable_code)]
-            Ok::<_, MyError>(())
-        }
-    };
-
-    spawn(interruptible(program_finished_rx, Box::pin(async move {
-        loop {
-            if let Err(err) = my_loop().await {
-                error!("Error processing transactions: {}", err);
-            }
-        }
-        #[allow(unreachable_code)]
-        Ok::<(), MyError>(())
-    })));
+    process_current(common2x.clone(), readonly2.clone(), program_finished_rx).await?;
 
     let factory = move || {
         let cors = Cors::default() // Construct CORS middleware builder
