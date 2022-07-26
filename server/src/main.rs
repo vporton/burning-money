@@ -260,7 +260,7 @@ async fn main() -> Result<(), MyError> {
                                         ).await?;
                                     }
                                 }
-                                common.lock().await.locked_funds -= amount;
+                                lock_funds(common.clone(), -amount);
                             }
                             common.lock().await.balance = readonly.web3.eth().balance(
                                 SecretKeyRef::new(&readonly.ethereum_key).address(), None
