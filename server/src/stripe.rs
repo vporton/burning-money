@@ -9,7 +9,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use log::{debug, info};
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use web3::contract::{Contract, Options};
 use tokio::sync::Mutex;
 use crate::{Common, CommonReadonly, MyError};
@@ -159,12 +159,11 @@ pub async fn confirm_payment(
     let client = reqwest::Client::builder()
         .user_agent(crate::APP_USER_AGENT)
         .build()?;
-    let url = format!("https://api.stripe.com/v1/payment_intents/{}", form.payment_intent_id);
-    let intent: Value = client.get(url)
+    let intent_url = format!("https://api.stripe.com/v1/payment_intents/{}", form.payment_intent_id);
+    let intent: Value = client.get(intent_url)
         .basic_auth::<&str, &str>(&readonly.config.stripe.secret_key, None)
         .send().await?
         .json().await?;
-    log::error!("{}", intent);
     if intent.get("metadata").ok_or(StripeError::new())?
         .get("user").ok_or(StripeError::new())?
         .as_str().ok_or(StripeError::new())? != ident.id()?
@@ -177,8 +176,10 @@ pub async fn confirm_payment(
     }
     let fiat_amount = intent.get("amount").ok_or(StripeError::new())?.as_i64().ok_or(StripeError::new())?;
 
-    match intent.get("status").ok_or(StripeError::new())?.as_str().ok_or(StripeError::new())? {
-        "succeeded" => {
+    let intent_status = intent.get("status").ok_or(StripeError::new())?.as_str().ok_or(StripeError::new())?;
+    info!("Payment intent status: {intent_status}");
+    let response = match intent_status {
+        "requires_confirmation" => { // FIXME: More statuses.
             let collateral_amount = fiat_to_crypto(&*readonly, fiat_amount).await?;
             let common2 = (**common).clone();
             lock_funds(common2.clone(), collateral_amount).await?;
@@ -203,13 +204,20 @@ pub async fn confirm_payment(
                 conn.execute("DELETE FROM txs WHERE id=$1", &[&id]).await?;
                 return Err(err.into());
             }
+            json!({
+                "requires_action": true,
+                "payment_intent_client_secret": intent.get("client_secret").ok_or(StripeError::new())?
+            })
+        },
+        "succeeded" => {
             { // restrict lock duration
                 let conn = &mut common.lock().await.db;
-                conn.execute("UPDATE txs WHERE id=$1 SET status='ordered'", &[&id]).await?;
+                conn.execute("UPDATE txs WHERE id=$1 SET status='ordered'", &[&form.payment_intent_id]).await?;
             }
             common.lock().await.notify_transaction_tx.send(())?;
+            json!({"success": true})
         }
-        "canceled" => {
+        "canceled" | "payment_failed" => {
             let collateral_amount: i64 = common.lock().await.db.query_one(
                 "SELECT crypto_amount FROM txs WHERE payment_intent_id=$1",
                 &[&form.payment_intent_id])
@@ -220,10 +228,22 @@ pub async fn confirm_payment(
                 "DELETE FROM txs WHERE payment_intent_id=$1",
                 &[&form.payment_intent_id])
                 .await?;
+            json!({"success": false})
         }
-        _ => {}
-    }
-    Ok(HttpResponse::Ok().append_header((CONTENT_TYPE, "application/json")).body("{}"))
+        "processing" => {
+            json!({
+                "requires_action": false,
+                "payment_intent_client_secret": intent.get("client_secret").ok_or(StripeError::new())?
+            })
+        }
+        _ => {
+            json!({
+                "requires_action": true,
+                "payment_intent_client_secret": intent.get("client_secret").ok_or(StripeError::new())?
+            })
+        }
+    };
+    Ok(HttpResponse::Ok().append_header((CONTENT_TYPE, "application/json")).body(response.to_string()))
 }
 
 pub async fn exchange_item(item: crate::models::Tx, common: Arc<Mutex<Common>>, readonly: &Arc<CommonReadonly>) -> Result<(), MyError> {

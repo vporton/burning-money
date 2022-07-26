@@ -125,7 +125,6 @@ function PaymentFormContent(props: any) { // TODO: `any`
                 data.push('payment_intent_id=' + encodeURIComponent(result.paymentIntent.id));
                 data.push('crypto_account=', + encodeURIComponent(props.userAccount));
                 data.push('bid_date=', + encodeURIComponent(props.bidDate.toISOString()));
-                console.log(data)
                 fetch(backendUrlPrefix + '/confirm-payment', {
                     method: 'POST',
                     credentials: 'include',
@@ -135,6 +134,7 @@ function PaymentFormContent(props: any) { // TODO: `any`
                 }).then(function (res) {
                     return res.json();
                 }).then(function (paymentResponse) {
+                    console.log('paymentResponse: ', paymentResponse)
                     handleServerResponse(paymentResponse);
                 });
             }
