@@ -121,7 +121,7 @@ function PaymentFormContent(props: any) { // TODO: `any`
                 alert(result.error); // TODO
             } else {
                 // Otherwise send paymentIntent.id to your server
-                fetch('/confirm-payment', {
+                fetch(backendUrlPrefix + '/confirm-payment', {
                     method: 'POST',
                     credentials: 'include',
                     headers: {'Content-Type': 'application/json'},
