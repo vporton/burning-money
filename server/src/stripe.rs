@@ -164,7 +164,11 @@ pub async fn confirm_payment(
         .basic_auth::<&str, &str>(&readonly.config.stripe.secret_key, None)
         .send().await?
         .json().await?;
-    if intent.get("metadata[user]").ok_or(StripeError::new())?.as_str().ok_or(StripeError::new())? != ident.id()? {
+    log::error!("{}", intent);
+    if intent.get("metadata").ok_or(StripeError::new())?
+        .get("user").ok_or(StripeError::new())?
+        .as_str().ok_or(StripeError::new())? != ident.id()?
+    {
         return Err(AuthenticationFailedError::new().into());
     }
 

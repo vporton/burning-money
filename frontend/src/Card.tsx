@@ -121,15 +121,17 @@ function PaymentFormContent(props: any) { // TODO: `any`
                 alert(result.error); // TODO
             } else {
                 // Otherwise send paymentIntent.id to your server
+                let data = [];
+                data.push('payment_intent_id=' + encodeURIComponent(result.paymentIntent.id));
+                data.push('crypto_account=', + encodeURIComponent(props.userAccount));
+                data.push('bid_date=', + encodeURIComponent(props.bidDate.toISOString()));
+                console.log(data)
                 fetch(backendUrlPrefix + '/confirm-payment', {
                     method: 'POST',
                     credentials: 'include',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        payment_intent_id: result.paymentIntent.id,
-                        crypto_account: props.userAccount,
-                        bid_date: props.bidDate.toISOString(),
-                    })
+                    mode: 'cors',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: data.join('&'),
                 }).then(function (res) {
                     return res.json();
                 }).then(function (paymentResponse) {
