@@ -185,7 +185,7 @@ pub async fn confirm_payment(
             let id: i64 = { // restrict lock duration
                 let conn = &mut common.lock().await.db;
                 conn.query_one(
-                    "INSERT INTO txs (payment_intent_id, user_id, eth_account, usd_amount, crypto_amount, bid_date) VALUES($1, $2, $3, $4, $5, $6)",
+                    "INSERT INTO txs (payment_intent_id, user_id, eth_account, usd_amount, crypto_amount, bid_date) VALUES($1, $2, $3, $4, $5, $6) RETURNING id",
                     &[
                         &form.payment_intent_id,
                         &ident.id()?.parse::<i64>()?,
@@ -217,7 +217,7 @@ pub async fn confirm_payment(
                 .get(0);
             lock_funds((**common).clone(), -collateral_amount).await?; // FIXME: not fiat
             common.lock().await.db.execute(
-                "DELETE FROM txt WHEREWHERE payment_intent_id=$1",
+                "DELETE FROM txs WHERE payment_intent_id=$1",
                 &[&form.payment_intent_id])
                 .await?;
         }
