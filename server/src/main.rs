@@ -32,7 +32,7 @@ use web3::api::EthFilter;
 use crate::errors::{CannotLoadDataError, MyError, StripeError};
 use crate::models::Tx;
 use crate::pages::{about_us, not_found};
-use crate::stripe::{create_payment_intent, exchange_item, lock_funds, stripe_public_key};
+use crate::stripe::{confirm_payment, create_payment_intent, exchange_item, lock_funds, stripe_public_key};
 use crate::user::{user_identity, user_login, user_register};
 
 mod pages;
@@ -360,6 +360,7 @@ async fn main() -> Result<(), MyError> {
             .service(about_us)
             .service(stripe_public_key)
             .service(create_payment_intent)
+            .service(confirm_payment)
             .service(
                 actix_files::Files::new("/media", "media").use_last_modified(true),
             )
