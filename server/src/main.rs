@@ -99,6 +99,8 @@ pub struct Common {
     // TODO: Unbounded?
     notify_transaction_tx: mpsc::UnboundedSender<()>,
     notify_transaction_rx: Arc<Mutex<mpsc::UnboundedReceiver<()>>>, // in Arc not to lock the entire struct for too long
+    balance: i64,
+    locked_funds: i64,
 }
 
 #[derive(Parser)]
@@ -173,27 +175,36 @@ async fn main() -> Result<(), MyError> {
     });
 
     let (program_finished_tx, program_finished_rx) = async_channel::bounded(1);
+    let balance = readonly.web3.eth().balance(
+        SecretKeyRef::new(&readonly.ethereum_key).address(), None).await?;
+    let locked_funds: i64 = client
+        .query_one("SELECT SUM(crypto_amount) FROM txs WHERE status!='confirmed'", &[])
+        .await?
+        .get(0);
     let common = Arc::new(Mutex::new(Common {
         db: client,
         transactions_awaited: HashSet::new(),
         program_finished_tx,
         notify_transaction_tx,
         notify_transaction_rx: Arc::new(Mutex::new(notify_transaction_rx)),
+        balance: balance.as_u64() as i64,
+        locked_funds,
     }));
 
-    let funds = readonly.web3.eth().balance(
-         SecretKeyRef::new(&readonly.ethereum_key).address(), None).await?;
-    let funds = funds.as_u64() as i64;
+    // FIXME: Remove the block?
+    // let funds = readonly.web3.eth().balance(
+    //      SecretKeyRef::new(&readonly.ethereum_key).address(), None).await?;
+    // let funds = funds.as_u64() as i64;
     { // restrict locks duration
         let mut common = common.lock().await;
         let trans = common.db.transaction().await?;
-        // let conn = &mut common.db;
-        let v_free_funds_row = trans.query_opt("SELECT free_funds FROM global FRO UPDATE", &[]).await?;
-        if let Some(_v_free_funds) = v_free_funds_row {
-            trans.execute("UPDATE global SET free_funds=$1", &[&funds]).await?;
-        } else {
-            trans.execute("INSERT global SET free_funds=$1", &[&funds]).await?;
-        }
+        // // let conn = &mut common.db;
+        // let v_free_funds_row = trans.query_opt("SELECT free_funds FROM global FRO UPDATE", &[]).await?;
+        // if let Some(_v_free_funds) = v_free_funds_row {
+        //     trans.execute("UPDATE global SET free_funds=$1", &[&funds]).await?;
+        // } else {
+        //     trans.execute("INSERT global SET free_funds=$1", &[&funds]).await?;
+        // }
         finish_transaction(trans, Ok::<_, MyError>(())).await?;
     }
 
@@ -247,14 +258,28 @@ async fn main() -> Result<(), MyError> {
                     if let Some(block_hash) = stream.next().await {
                         let block_hash = block_hash?;
                         if let Some(block) = readonly.web3.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
+                            // We assume that our account can be funded by others, but only we withdraw.
+                            // First remove from the locked funds, then update balance, for no races.
+                            // (Balance may decrease only after having locked a sum.)
                             for tx in block.transactions {
-                                if common.lock().await.transactions_awaited.remove(&tx) {
-                                    common.lock().await.db.execute(
-                                        "UPDATE txs SET status='confirmed' WHERE tx_id=$1",
-                                        &[&tx.as_bytes()]
-                                    ).await?;
+                                let row = common.lock().await.db
+                                    .query_one("SELECT id, crypto_amount FROM txs WHERE tx_id=$1", &[&tx.as_bytes()]).await?;
+                                let (id, amount): (i64, i64) = (row.get(0), row.get(1));
+                                { // limit lock duration
+                                    let mut common = common.lock().await;
+                                    if common.transactions_awaited.remove(&tx) {
+                                        common.db.execute(
+                                            "UPDATE txs SET status='confirmed' WHERE id=$1",
+                                            &[&id]
+                                        ).await?;
+                                    }
                                 }
+                                common.lock().await.locked_funds -= amount;
                             }
+                            common.lock().await.balance = readonly.web3.eth().balance(
+                                SecretKeyRef::new(&readonly.ethereum_key).address(), None
+                            )
+                                .await?.as_u64() as i64;
                         }
                     } else {
                         break;

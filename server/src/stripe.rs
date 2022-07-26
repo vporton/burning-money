@@ -12,7 +12,6 @@ use serde_json::Value;
 use web3::contract::{Contract, Options};
 use tokio::sync::Mutex;
 use crate::{Common, CommonReadonly, MyError};
-use crate::async_db::finish_transaction;
 use crate::errors::{AuthenticationFailedError, NotEnoughFundsError, StripeError};
 
 // We follow https://stripe.com/docs/payments/finalize-payments-on-the-server
@@ -82,27 +81,32 @@ async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly
 }
 
 async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), MyError> {
-    let amount = amount.clone();
-    let amount2 = amount.clone(); // superfluous?
     let mut common = common.lock().await; // locks for all duration of the function
-    let conn = &mut common.db; // locks for all duration of the function
-    let trans = conn.transaction().await?;
-    let result = { // block to limit scope of trans0
-        let trans0 = &trans;
-        let do_it = || async move {
-            let v_free_funds: i64 =
-                trans0.query_one("SELECT free_funds FROM global FOR UPDATE", &[]).await?.get(0);
-            const MAX_GAS: i64 = 30_000_000; // TODO: less
-            if amount >= v_free_funds + MAX_GAS {
-                return Err::<_, MyError>(NotEnoughFundsError::new().into());
-            }
-            trans0.execute("UPDATE global SET free_funds=$1", &[&(v_free_funds - amount2)]).await?;
-            Ok(())
-        };
-        do_it().await
-    };
-    // let trans2 = &mut trans;
-    finish_transaction::<_, MyError>(trans, result).await?;
+    if common.locked_funds + amount >= common.balance {
+        return Err(NotEnoughFundsError::new().into());
+    }
+    common.locked_funds += amount;
+    // let amount = amount.clone();
+    // let amount2 = amount.clone(); // superfluous?
+    // let mut common = common.lock().await; // locks for all duration of the function
+    // let conn = &mut common.db; // locks for all duration of the function
+    // let trans = conn.transaction().await?;
+    // let result = { // block to limit scope of trans0
+    //     let trans0 = &trans;
+    //     let do_it = || async move {
+    //         let v_free_funds: i64 =
+    //             trans0.query_one("SELECT free_funds FROM global FOR UPDATE", &[]).await?.get(0);
+    //         const MAX_GAS: i64 = 30_000_000; // TODO: less
+    //         if amount >= v_free_funds + MAX_GAS {
+    //             return Err::<_, MyError>(NotEnoughFundsError::new().into());
+    //         }
+    //         trans0.execute("UPDATE global SET free_funds=$1", &[&(v_free_funds - amount2)]).await?;
+    //         Ok(())
+    //     };
+    //     do_it().await
+    // };
+    // // let trans2 = &mut trans;
+    // finish_transaction::<_, MyError>(trans, result).await?;
     Ok(())
 }
 
