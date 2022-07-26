@@ -6,7 +6,7 @@ use actix_identity::Identity;
 use actix_web::{get, post, Responder, web, HttpResponse};
 use actix_web::http::header::CONTENT_TYPE;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use log::debug;
+use log::{debug, info};
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -197,6 +197,7 @@ pub async fn confirm_payment(
                 ).await?.get(0)
             };
             if let Err(err) = finalize_payment(form.payment_intent_id.as_str(), &*readonly).await {
+                info!("Cannot finalize Stripe payment: {}", err);
                 lock_funds(common2.clone(), -collateral_amount).await?;
                 let conn = &mut common.lock().await.db; // short lock duration
                 conn.execute("DELETE FROM txs WHERE id=$1", &[&id]).await?;
