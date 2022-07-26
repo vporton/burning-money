@@ -100,7 +100,7 @@ pub async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), M
 
 // It returns the Ethereum transaction (probably, yet not confirmed).
 async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bid_date: DateTime<Utc>, crypto_amount: i64)
-                     -> Result<H256, MyError>
+    -> Result<H256, MyError>
 {
     let token =
         Contract::from_json(
