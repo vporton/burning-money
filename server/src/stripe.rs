@@ -106,7 +106,11 @@ async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bi
         Contract::from_json(
             readonly.web3.eth(),
             readonly.addresses.token,
-            include_bytes!("../../artifacts/contracts/Token.sol/Token.json"),
+            // serde_json::from_slice::<Value>(
+            //     include_bytes!("../../artifacts/contracts/Token.sol/Token.json")
+            // ).unwrap()["abi"].to_string().as_bytes(),
+            r#"[{"type":"function","name":"bidOn","inputs":[{"name":"_day","type":"uint256"},{"name":"_collateralAmount","type":"uint256"},{"name":"_for","type":"address"}],"outputs":[],"stateMutability":"nonpayable"}]"#
+                .as_bytes()
         )?;
     let tx = token.signed_call(
         "bidOn",
@@ -130,12 +134,15 @@ async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Res
         Contract::from_json(
             readonly.web3.eth(),
             readonly.addresses.collateral_oracle,
-            include_bytes!("../../artifacts/@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json"),
+            // serde_json::from_slice::<Value>(
+            //     include_bytes!("../../artifacts/@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json")
+            // ).unwrap()["abi"].to_string().as_bytes(),
+            r#"[{"type":"function","name":"decimals","inputs":[],"outputs":[{"name":"","type":"uint8"}]},{"type":"function","name":"latestRoundData","inputs":[],"outputs":[{"name":"roundId","type":"uint80"},{"name":"answer","type":"int256"},{"name":"startedAt","type":"uint256"},{"name":"updatedAt","type":"uint256"},{"name":"answeredInRound","type":"uint80"}]}]"#
+                .as_bytes(),
         )?;
 
     // TODO: Query `decimals` only once.
-    let accounts = readonly.web3.eth().accounts().await?;
-    let decimals = price_oracle.query("decimals", (accounts[0], ), None, Options::default(), None).await?;
+    let decimals = price_oracle.query("decimals", (), None, Options::default(), None).await?;
     let (
         _round_id,
         answer,
@@ -143,7 +150,7 @@ async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Res
         _updated_at,
         _answered_in_round,
     ): ([u8; 80], [u8; 256], [u8; 256], [u8; 256], [u8; 80]) =
-        price_oracle.query("latestRoundData", (accounts[0], ), None, Options::default(), None).await?;
+        price_oracle.query("latestRoundData", (), None, Options::default(), None).await?;
     let answer = <u64>::from_le_bytes(answer[..8].try_into().unwrap()) as i64;
     let answer = ((answer as f64) * (1.0 - readonly.config.our_tax)) as i64;
     Ok(fiat_amount * i64::pow(10, decimals) / answer)
