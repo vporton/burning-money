@@ -62,7 +62,7 @@ impl From<CommandError> for MyError {
     }
 }
 
-const SCRIPTS_UP: [(&str, &str); 3] = [
+const SCRIPTS_UP: [(&str, &str); 2] = [
     (
         "2022-07-15-051941_users",
         include_str!("../../migrations/2022-07-15-051941_users/up.sql"),
@@ -71,17 +71,9 @@ const SCRIPTS_UP: [(&str, &str); 3] = [
         "2022-07-18-132458_txs",
         include_str!("../../migrations/2022-07-18-132458_txs/up.sql"),
     ),
-    (
-        "2022-07-19-084330_lockfunds",
-        include_str!("../../migrations/2022-07-19-084330_lockfunds/up.sql"),
-    ),
 ];
 
-const SCRIPTS_DOWN: [(&str, &str); 3] = [
-    (
-        "2022-07-19-084330_lockfunds",
-        include_str!("../../migrations/2022-07-19-084330_lockfunds/down.sql"),
-    ),
+const SCRIPTS_DOWN: [(&str, &str); 2] = [
     (
         "2022-07-18-132458_txs",
         include_str!("../../migrations/2022-07-18-132458_txs/down.sql"),

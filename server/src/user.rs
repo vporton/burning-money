@@ -42,7 +42,7 @@ pub async fn user_register(request: HttpRequest, info: web::Form<User>, common: 
     let common = &**common;
     let conn = &mut common.lock().await.db;
     let v_id: i64 = conn.query_one(
-        "INSERT users SET first_name=$1, last_name=$2, email=$3, password=$4 RETURNING id",
+        "INSERT INTO users SET first_name=$1, last_name=$2, email=$3, password=$4 RETURNING id",
         &[&info.first_name, &info.last_name, &info.email, &info.password],
     ).await?.get(0);
     Identity::login(&request.extensions(), format!("{}", v_id))?;
