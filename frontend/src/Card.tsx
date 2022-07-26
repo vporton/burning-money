@@ -45,6 +45,7 @@ function PaymentForm(props: { bidDate: Date }) {
             const fiatAmount = fiatAmountRef.current?.value as unknown as number * 100; // FIXME
             const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`, {
                 method: "POST",
+                credentials: 'include',
             })).json(); // FIXME
             if (res.error) {
                 setShowPaymentError(res.error.message);
@@ -122,6 +123,7 @@ function PaymentFormContent(props: any) { // TODO: `any`
                 // Otherwise send paymentIntent.id to your server
                 fetch('/confirm-payment', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         payment_intent_id: result.paymentIntent.id,
