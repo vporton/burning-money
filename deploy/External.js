@@ -7,9 +7,6 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
     const {deployer} = await getNamedAccounts();
     const networkName = hre.network.name;
     const addresses = JSON.parse(fs.readFileSync('addresses.json'))[network.name];
-    if(addresses.beneficiant) {
-        updateAddress(network.name, "beneficiant", addresses.beneficiant);
-    }
     if(addresses.collateralOracle) {
         updateAddress(network.name, "collateralOracle", addresses.collateralOracle);
     } else if(process.env['TEST']) {
