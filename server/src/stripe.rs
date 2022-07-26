@@ -218,7 +218,7 @@ pub async fn confirm_payment(
 }
 
 pub async fn exchange_item(item: crate::models::Tx, common: Arc<Mutex<Common>>, readonly: &Arc<CommonReadonly>) -> Result<(), MyError> {
-    lock_funds(common.clone(), -item.usd_amount).await?;
+    lock_funds(common.clone(), -item.crypto_amount).await?;
     let naive = NaiveDateTime::from_timestamp(item.bid_date, 0);
     let tx = do_exchange(
         &readonly,
