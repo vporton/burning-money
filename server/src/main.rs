@@ -109,6 +109,7 @@ struct Cli {
     config: String,
 }
 
+/// Starts a fiber that processes currently added payments.
 async fn process_current(
     common2x: Arc<Mutex<Common>>,
     readonly2: Arc<CommonReadonly>,
