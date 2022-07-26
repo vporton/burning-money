@@ -56,6 +56,7 @@ pub struct Config {
     ethereum_endpoint: String, // or Url?
     pull_ethereum: u16,
     addresses_file: String,
+    our_tax: f64,
     secrets: SecretsConfig,
     database: DBConfig,
     stripe: StripeConfig,

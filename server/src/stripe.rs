@@ -145,6 +145,7 @@ async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Res
     ): ([u8; 80], [u8; 256], [u8; 256], [u8; 256], [u8; 80]) =
         price_oracle.query("latestRoundData", (accounts[0], ), None, Options::default(), None).await?;
     let answer = <u64>::from_le_bytes(answer[..8].try_into().unwrap()) as i64;
+    let answer = ((answer as f64) * (1.0 - readonly.config.our_tax)) as i64;
     Ok(fiat_amount * i64::pow(10, decimals) / answer)
 }
 
