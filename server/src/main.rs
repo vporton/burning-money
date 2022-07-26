@@ -29,11 +29,10 @@ use tokio_interruptible_future::interruptible;
 use tokio_postgres::NoTls;
 use web3::api::Namespace;
 use web3::api::EthFilter;
-use crate::async_db::finish_transaction;
 use crate::errors::{CannotLoadDataError, MyError};
 use crate::models::Tx;
 use crate::pages::{about_us, not_found};
-use crate::stripe::{create_payment_intent, exchange_item, stripe_public_key};
+use crate::stripe::{create_payment_intent, exchange_item, lock_funds, stripe_public_key};
 use crate::user::{user_identity, user_login, user_register};
 
 mod pages;
@@ -177,10 +176,6 @@ async fn main() -> Result<(), MyError> {
     let (program_finished_tx, program_finished_rx) = async_channel::bounded(1);
     let balance = readonly.web3.eth().balance(
         SecretKeyRef::new(&readonly.ethereum_key).address(), None).await?;
-    let locked_funds: i64 = client
-        .query_one("SELECT SUM(crypto_amount) FROM txs WHERE status!='confirmed'", &[])
-        .await?
-        .get(0);
     let common = Arc::new(Mutex::new(Common {
         db: client,
         transactions_awaited: HashSet::new(),
@@ -188,25 +183,16 @@ async fn main() -> Result<(), MyError> {
         notify_transaction_tx,
         notify_transaction_rx: Arc::new(Mutex::new(notify_transaction_rx)),
         balance: balance.as_u64() as i64,
-        locked_funds,
+        locked_funds: 0,
     }));
-
-    // FIXME: Remove the block?
-    // let funds = readonly.web3.eth().balance(
-    //      SecretKeyRef::new(&readonly.ethereum_key).address(), None).await?;
-    // let funds = funds.as_u64() as i64;
-    { // restrict locks duration
-        let mut common = common.lock().await;
-        let trans = common.db.transaction().await?;
-        // // let conn = &mut common.db;
-        // let v_free_funds_row = trans.query_opt("SELECT free_funds FROM global FRO UPDATE", &[]).await?;
-        // if let Some(_v_free_funds) = v_free_funds_row {
-        //     trans.execute("UPDATE global SET free_funds=$1", &[&funds]).await?;
-        // } else {
-        //     trans.execute("INSERT global SET free_funds=$1", &[&funds]).await?;
-        // }
-        finish_transaction(trans, Ok::<_, MyError>(())).await?;
-    }
+    { // block
+        let rows = common.lock().await.db
+            .query("SELECT crypto_amount FROM txs WHERE status!='confirmed'", &[])
+            .await?;
+        for row in &rows {
+            lock_funds(common.clone(), row.get(0)).await?; // takes gas into account
+        }
+    };
 
     { // restrict lock duration
         let mut common = common.lock().await;

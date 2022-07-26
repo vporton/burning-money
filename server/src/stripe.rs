@@ -30,7 +30,7 @@ pub async fn stripe_public_key(readonly: web::Data<CommonReadonly>) -> impl Resp
 pub async fn create_payment_intent(
     q: web::Query<CreateStripeCheckout>,
     ident: Identity,
-    common: web::Data<Arc<Mutex<Common>>>,readonly: web::Data<CommonReadonly>
+    common: web::Data<Arc<Mutex<Common>>>, readonly: web::Data<CommonReadonly>,
 ) -> Result<impl Responder, MyError> {
     { // block
         let common = (**common).clone();
@@ -80,39 +80,24 @@ async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly
     Ok(())
 }
 
-async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), MyError> {
+pub async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), MyError> {
     let mut common = common.lock().await; // locks for all duration of the function
-    if common.locked_funds + amount >= common.balance {
+    const MAX_GAS: i64 = 30_000_000; // TODO: less
+    let locked_funds = if common.locked_funds >= 0 { // hack
+        common.locked_funds + MAX_GAS
+    } else {
+        common.locked_funds - MAX_GAS
+    };
+    if locked_funds + amount >= common.balance {
         return Err(NotEnoughFundsError::new().into());
     }
     common.locked_funds += amount;
-    // let amount = amount.clone();
-    // let amount2 = amount.clone(); // superfluous?
-    // let mut common = common.lock().await; // locks for all duration of the function
-    // let conn = &mut common.db; // locks for all duration of the function
-    // let trans = conn.transaction().await?;
-    // let result = { // block to limit scope of trans0
-    //     let trans0 = &trans;
-    //     let do_it = || async move {
-    //         let v_free_funds: i64 =
-    //             trans0.query_one("SELECT free_funds FROM global FOR UPDATE", &[]).await?.get(0);
-    //         const MAX_GAS: i64 = 30_000_000; // TODO: less
-    //         if amount >= v_free_funds + MAX_GAS {
-    //             return Err::<_, MyError>(NotEnoughFundsError::new().into());
-    //         }
-    //         trans0.execute("UPDATE global SET free_funds=$1", &[&(v_free_funds - amount2)]).await?;
-    //         Ok(())
-    //     };
-    //     do_it().await
-    // };
-    // // let trans2 = &mut trans;
-    // finish_transaction::<_, MyError>(trans, result).await?;
     Ok(())
 }
 
 // It returns the Ethereum transaction (probably, yet not confirmed).
 async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bid_date: DateTime<Utc>, crypto_amount: i64)
-    -> Result<H256, MyError>
+                     -> Result<H256, MyError>
 {
     let token =
         Contract::from_json(
@@ -147,7 +132,7 @@ async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Res
 
     // TODO: Query `decimals` only once.
     let accounts = readonly.web3.eth().accounts().await?;
-    let decimals = price_oracle.query("decimals", (accounts[0],), None, Options::default(), None).await?;
+    let decimals = price_oracle.query("decimals", (accounts[0], ), None, Options::default(), None).await?;
     let (
         _round_id,
         answer,
@@ -155,7 +140,7 @@ async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Res
         _updated_at,
         _answered_in_round,
     ): ([u8; 80], [u8; 256], [u8; 256], [u8; 256], [u8; 80]) =
-        price_oracle.query("latestRoundData", (accounts[0],), None, Options::default(), None).await?;
+        price_oracle.query("latestRoundData", (accounts[0], ), None, Options::default(), None).await?;
     let answer = <u64>::from_le_bytes(answer[..8].try_into().unwrap()) as i64;
     Ok(fiat_amount * i64::pow(10, decimals) / answer)
 }
@@ -192,8 +177,9 @@ pub async fn confirm_payment(
             let id: i64 = { // restrict lock duration
                 let conn = &mut common.lock().await.db;
                 conn.query_one(
-                    "INSERT INTO txs SET user_id=$1, eth_account=$2, usd_amount=$3, crypto_amount=$4, bid_date=$5",
+                    "INSERT INTO txs SET payment_intent_id=$1, user_id=$2, eth_account=$3, usd_amount=$4, crypto_amount=$5, bid_date=$6",
                     &[
+                        &form.payment_intent_id,
                         &ident.id()?.parse::<i64>()?,
                         &<Address>::from_str(&form.crypto_account)?.as_bytes(),
                         &fiat_amount,
@@ -215,7 +201,16 @@ pub async fn confirm_payment(
             common.lock().await.notify_transaction_tx.send(())?;
         }
         "canceled" => {
-            lock_funds((**common).clone(), -fiat_amount).await?; // FIXME: not fiat
+            let collateral_amount: i64 = common.lock().await.db.query_one(
+                "SELECT crypto_amount FROM txs WHERE payment_intent_id=$1",
+                &[&form.payment_intent_id])
+                .await?
+                .get(0);
+            lock_funds((**common).clone(), -collateral_amount).await?; // FIXME: not fiat
+            common.lock().await.db.execute(
+                "DELETE FROM txt WHEREWHERE payment_intent_id=$1",
+                &[&form.payment_intent_id])
+                .await?;
         }
         _ => {}
     }
@@ -229,7 +224,7 @@ pub async fn exchange_item(item: crate::models::Tx, common: Arc<Mutex<Common>>, 
         &readonly,
         (<&[u8; 20]>::try_from(item.eth_account.as_slice())?).into(),
         DateTime::from_utc(naive, Utc),
-        item.crypto_amount
+        item.crypto_amount,
     ).await?;
     let conn = &common.lock().await.db;
     conn.execute("UPDATE txs SET status='submitted_to_blockchain' WHERE id=$1", &[&item.id]).await?;

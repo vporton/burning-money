@@ -13,27 +13,19 @@ contract Token is ERC20, ERC2771Context, Ownable {
 
     int128 public growthRate;
     mapping (address => address) public referrals;
-    address payable public beneficiant;
     mapping (uint => mapping(address => uint256)) public bids; // time => (address => bid)
     mapping (uint => uint256) public totalBids; // time => total bid
 
     constructor(
         int128 _growthRate,
         address _trustedForwarder,
-        address payable _beneficiant,
         string memory _name,
         string memory _symbol
     )
         ERC2771Context(_trustedForwarder) ERC20(_name, _symbol)
     {
         growthRate = _growthRate;
-        beneficiant = _beneficiant;
-        emit TokenCreated(_growthRate, _trustedForwarder, _beneficiant, _name, _symbol);
-    }
-
-    function changeBeneficiant(address payable _beneficiant) public onlyOwner {
-        beneficiant = _beneficiant;
-        emit BeneficiantChanged(_beneficiant);
+        emit TokenCreated(_growthRate, _trustedForwarder, _name, _symbol);
     }
 
     function setReferral(address _referral) public {
@@ -64,7 +56,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
         unchecked { // Overflow checked by the previous statement.
             bids[_day][_for] += _collateralAmount;
         }
-        beneficiant.transfer(_collateralAmount);
+        payable(0).transfer(_collateralAmount);
         emit Bid(_msgSender(), _for, _day, _collateralAmount);
     }
 
@@ -94,11 +86,9 @@ contract Token is ERC20, ERC2771Context, Ownable {
     event TokenCreated(
         int128 growthRate,
         address trustedForwarder,
-        address beneficiant,
         string name,
         string symbol
     );
-    event BeneficiantChanged(address beneficiant);
     event SetReferral(address sender, address referral);
     event OurMint(address sender, address account, uint256 amount);
     event Bid(address sender, address for_, uint day, uint256 amount);

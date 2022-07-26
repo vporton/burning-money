@@ -3,6 +3,7 @@ CREATE TYPE txs_status_type AS ENUM ('before_ordered', 'ordered', 'submitted_to_
 
 CREATE TABLE txs (
     id BIGSERIAL NOT NULL PRIMARY KEY,
+    payment_intent_id TEXT NOT NULL,
     user_id BIGINT NOT NULL,
     eth_account BYTEA NOT NULL,
     usd_amount BIGINT NOT NULL,

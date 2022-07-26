@@ -17,18 +17,18 @@
 //     }
 // }
 
-pub async fn finish_transaction<T, E: From<tokio_postgres::Error>>(
-    trans: tokio_postgres::Transaction<'_>,
-    value: Result<T, E>
-) -> Result<T, E> {
-    match value {
-        Ok(value) => {
-            trans.commit().await?;
-            Ok(value)
-        }
-        Err(e) => {
-            trans.rollback().await?;
-            Err(e)
-        }
-    }
-}
+// pub async fn finish_transaction<T, E: From<tokio_postgres::Error>>(
+//     trans: tokio_postgres::Transaction<'_>,
+//     value: Result<T, E>
+// ) -> Result<T, E> {
+//     match value {
+//         Ok(value) => {
+//             trans.commit().await?;
+//             Ok(value)
+//         }
+//         Err(e) => {
+//             trans.rollback().await?;
+//             Err(e)
+//         }
+//     }
+// }
