@@ -13,7 +13,7 @@ use serde_json::Value;
 use web3::contract::{Contract, Options};
 use tokio::sync::Mutex;
 use crate::{Common, CommonReadonly, MyError};
-use crate::errors::{AuthenticationFailedError, NotEnoughFundsError, StripeError};
+use crate::errors::{AuthenticationFailedError, KYCError, NotEnoughFundsError, StripeError};
 
 // We follow https://stripe.com/docs/payments/finalize-payments-on-the-server
 
@@ -23,7 +23,7 @@ pub struct CreateStripeCheckout {
 }
 
 #[get("/stripe-pubkey")]
-pub async fn stripe_public_key(readonly: web::Data<CommonReadonly>) -> impl Responder {
+pub async fn stripe_public_key(readonly: web::Data<Arc<CommonReadonly>>) -> impl Responder {
     HttpResponse::Ok().body(readonly.config.stripe.public_key.clone())
 }
 
@@ -31,7 +31,7 @@ pub async fn stripe_public_key(readonly: web::Data<CommonReadonly>) -> impl Resp
 pub async fn create_payment_intent(
     q: web::Query<CreateStripeCheckout>,
     ident: Identity,
-    common: web::Data<Arc<Mutex<Common>>>, readonly: web::Data<CommonReadonly>,
+    common: web::Data<Arc<Mutex<Common>>>, readonly: web::Data<Arc<CommonReadonly>>,
 ) -> Result<impl Responder, MyError> {
     { // block
         let common = (**common).clone();
@@ -42,7 +42,7 @@ pub async fn create_payment_intent(
             result.get(0)
         };
         if !v_passed_kyc {
-            return Err(AuthenticationFailedError::new().into()); // TODO: more specific error
+            return Err(KYCError::new().into());
         }
     }
     let client = reqwest::Client::builder()
@@ -154,7 +154,7 @@ pub async fn confirm_payment(
     form: web::Form<ConfirmPaymentForm>,
     ident: Identity,
     common: web::Data<Arc<Mutex<Common>>>,
-    readonly: web::Data<CommonReadonly>,
+    readonly: web::Data<Arc<CommonReadonly>>,
 ) -> Result<impl Responder, MyError> {
     let client = reqwest::Client::builder()
         .user_agent(crate::APP_USER_AGENT)
@@ -181,7 +181,7 @@ pub async fn confirm_payment(
             let id: i64 = { // restrict lock duration
                 let conn = &mut common.lock().await.db;
                 conn.query_one(
-                    "INSERT INTO txs SET payment_intent_id=$1, user_id=$2, eth_account=$3, usd_amount=$4, crypto_amount=$5, bid_date=$6",
+                    "INSERT INTO txs (payment_intent_id, user_id, eth_account, usd_amount, crypto_amount, bid_date) VALUES($1, $2, $3, $4, $5, $6)",
                     &[
                         &form.payment_intent_id,
                         &ident.id()?.parse::<i64>()?,

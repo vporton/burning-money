@@ -29,6 +29,21 @@ impl Display for AuthenticationFailedError {
 }
 
 #[derive(Debug)]
+pub struct KYCError;
+
+impl KYCError {
+    pub fn new() -> Self {
+        Self { }
+    }
+}
+
+impl Display for KYCError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "You didn't pass KYC.")
+    }
+}
+
+#[derive(Debug)]
 pub struct NotEnoughFundsError;
 
 impl NotEnoughFundsError {
@@ -105,6 +120,7 @@ pub enum MyError {
     AsyncChannelSendEmpty(async_channel::SendError<()>),
     Stripe(StripeError),
     CannotLoadData(CannotLoadDataError),
+    KYC(KYCError),
 }
 
 #[derive(Serialize)]
@@ -173,6 +189,7 @@ impl Display for MyError {
             Self::AsyncChannelSendEmpty(err) => write!(f, "Async send error: {}", err),
             Self::Stripe(_) => write!(f, "Stripe API failed."),
             Self::CannotLoadData(_) => write!(f, "Cannot load data."),
+            Self::KYC(_) => write!(f, "KYC didn't pass."),
         }
     }
 }
@@ -181,6 +198,7 @@ impl ResponseError for MyError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::AuthenticationFailed(_) => StatusCode::UNAUTHORIZED,
+            Self::KYC(_) => StatusCode::UNAUTHORIZED,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -360,5 +378,11 @@ impl From<StripeError> for MyError {
 impl From<CannotLoadDataError> for MyError {
     fn from(value: CannotLoadDataError) -> Self {
         Self::CannotLoadData(value)
+    }
+}
+
+impl From<KYCError> for MyError {
+    fn from(value: KYCError) -> Self {
+        Self::KYC(value)
     }
 }
