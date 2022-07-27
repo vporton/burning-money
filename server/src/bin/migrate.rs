@@ -125,7 +125,7 @@ struct Cli {
 }
 
 #[actix_web::main]
-async fn main() -> Result<(), MyError> {
+async fn main() -> Result<(), anyhow::Error> {
     let args = Cli::parse();
     let config: Config = toml::from_str(fs::read_to_string(args.config.as_str())?.as_str())?;
 

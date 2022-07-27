@@ -112,7 +112,7 @@ struct Cli {
 
 /// Solve any discrepancies caused by the program improperly terminated
 /// TODO: Execute it periodically.
-async fn prepare_data(common: Arc<Mutex<Common>>, readonly: Arc<CommonReadonly>) -> Result<(), MyError> {
+async fn prepare_data(common: Arc<Mutex<Common>>, readonly: Arc<CommonReadonly>) -> Result<(), anyhow::Error> {
     // TODO: Remove old 'before_ordered' rows.
 
     // Check unfinished Stripe transactions:
@@ -147,7 +147,7 @@ async fn process_current(
     common: Arc<Mutex<Common>>,
     readonly: Arc<CommonReadonly>,
     program_finished_rx: async_channel::Receiver<()>)
-    -> Result<(), MyError> {
+    -> Result<(), anyhow::Error> {
     let my_loop = move || {
         let common2 = common.clone();
         let readonly2 = readonly.clone(); // needed?
@@ -220,7 +220,7 @@ async fn process_current(
                 rc.lock().await.recv().await;
             }
             #[allow(unreachable_code)]
-            Ok::<_, MyError>(())
+            Ok::<_, anyhow::Error>(())
         }
     };
 
@@ -231,14 +231,14 @@ async fn process_current(
             }
         }
         #[allow(unreachable_code)]
-        Ok::<(), MyError>(())
+        Ok::<(), anyhow::Error>(())
     })));
 
     Ok(())
 }
 
 #[actix_web::main]
-async fn main() -> Result<(), MyError> {
+async fn main() -> Result<(), anyhow::Error> {
     env_logger::builder()
         .format_timestamp(Some(TimestampPrecision::Millis))
         .init();

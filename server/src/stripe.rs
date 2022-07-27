@@ -70,7 +70,7 @@ pub async fn create_payment_intent(
     Ok(web::Json(data))
 }
 
-async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly>) -> Result<(), MyError> {
+async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly>) -> Result<(), anyhow::Error> {
     let client = reqwest::Client::builder()
         .user_agent(crate::APP_USER_AGENT)
         .build()?;
@@ -81,7 +81,7 @@ async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly
     Ok(())
 }
 
-pub async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), MyError> {
+pub async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), anyhow::Error> {
     let mut common = common.lock().await; // locks for all duration of the function
     const MAX_GAS: i64 = 30_000_000; // TODO: less
     let locked_funds = if common.locked_funds >= 0 { // hack
@@ -100,7 +100,7 @@ pub async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), M
 
 // It returns the Ethereum transaction (probably, yet not confirmed).
 async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bid_date: DateTime<Utc>, crypto_amount: i64)
-    -> Result<H256, MyError>
+    -> Result<H256, anyhow::Error>
 {
     let token =
         Contract::from_json(
@@ -129,7 +129,7 @@ pub struct ConfirmPaymentForm {
     bid_date: String,
 }
 
-async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Result<i64, MyError> {
+async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Result<i64, anyhow::Error> {
     let price_oracle =
         Contract::from_json(
             readonly.web3.eth(),
@@ -197,7 +197,7 @@ pub async fn confirm_payment(
                     &[
                         &form.payment_intent_id,
                         &ident.id()?.parse::<i64>()?,
-                        &<Address>::from_str(&form.crypto_account)?.as_bytes(),
+                        &<Address>::from_str(&form.crypto_account)?.as_bytes(), // TODO: better error message (not error 500)
                         &fiat_amount,
                         &collateral_amount,
                         &DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp(),
@@ -253,7 +253,7 @@ pub async fn confirm_payment(
     Ok(HttpResponse::Ok().append_header((CONTENT_TYPE, "application/json")).body(response.to_string()))
 }
 
-pub async fn exchange_item(item: crate::models::Tx, common: Arc<Mutex<Common>>, readonly: &Arc<CommonReadonly>) -> Result<(), MyError> {
+pub async fn exchange_item(item: crate::models::Tx, common: Arc<Mutex<Common>>, readonly: &Arc<CommonReadonly>) -> Result<(), anyhow::Error> {
     lock_funds(common.clone(), -item.crypto_amount).await?;
     let naive = NaiveDateTime::from_timestamp(item.bid_date, 0);
 

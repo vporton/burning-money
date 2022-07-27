@@ -96,7 +96,7 @@ function PaymentFormContent(props: any) { // TODO: `any`
       
         const handleServerResponse = async (response: any) => {
             if (response.error) {
-              alert(response.error); // FIXME
+                alert(response.error); // FIXME
             } else if (response.requires_action) {
                 // Use Stripe.js to handle the required next action
                 const {
@@ -123,8 +123,8 @@ function PaymentFormContent(props: any) { // TODO: `any`
                 // Otherwise send paymentIntent.id to your server
                 let data = [];
                 data.push('payment_intent_id=' + encodeURIComponent(result.paymentIntent.id));
-                data.push('crypto_account=', + encodeURIComponent(props.userAccount));
-                data.push('bid_date=', + encodeURIComponent(props.bidDate.toISOString()));
+                data.push('crypto_account=' + encodeURIComponent(props.userAccount));
+                data.push('bid_date=' + encodeURIComponent(props.bidDate.toISOString()));
                 fetch(backendUrlPrefix + '/confirm-payment', {
                     method: 'POST',
                     credentials: 'include',
