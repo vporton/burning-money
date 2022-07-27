@@ -11,7 +11,8 @@ CREATE TABLE txs (
     bid_date BIGINT NOT NULL,
     status txs_status_type NOT NULL DEFAULT 'before_ordered',
     tx_id BYTEA NOT NULL DEFAULT '', -- Ethereum tx ID. -- FIXME: Should be NULL.
-    CONSTRAINT txs_user_fk FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT txs_user_fk FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT payment_intent_id_uniq UNIQUE(payment_intent_id)
 );
 CREATE INDEX txs_user ON txs USING HASH(user_id);
 CREATE INDEX txs_tx_id ON txs USING HASH(tx_id);
