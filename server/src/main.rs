@@ -327,7 +327,11 @@ async fn main() -> Result<(), anyhow::Error> {
             .query("SELECT tx_id FROM txs WHERE status = 'submitted_to_blockchain'", &[])
             .await?
             .into_iter()
-            .map(|row| H256::from_slice(row.get(0)))
+            .filter_map(|row| if let Some(tx) = row.get(0) {
+                Some(H256::from_slice(tx))
+            } else {
+                None
+            })
         );
     }
 
