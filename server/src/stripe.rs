@@ -212,7 +212,7 @@ pub async fn confirm_payment(
                 return Err(err.into());
             }
             json!({
-                "requires_action": true,
+                "requires_action": false,
                 "payment_intent_client_secret": intent.get("client_secret").ok_or(StripeError::new())?
             })
         },
