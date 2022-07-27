@@ -36,7 +36,7 @@ function PaymentForm(props: { bidDate: Date }) {
     const [fiatAmount, setFiatAmount] = useState(0);
     const [showPayment, setShowPayment] = useState(false);
     const [showPaymentError, setShowPaymentError] = useState("");
-    const [paymentIntentId, setPaymentIntentId] = useState("");
+    const [paymentIntentId, setPaymentIntentId] = useState(""); // FIXME: It uses the first successul payment intent ID, rather than for the last entered fiat value.
     const [userAccount, setUserAccount] = useState("");
     const fiatAmountRef = useRef<HTMLInputElement>(null); // TOOD: Use events instead.
     useEffect(() => {
@@ -63,7 +63,7 @@ function PaymentForm(props: { bidDate: Date }) {
                     appearance: {},
                 });
                 setStripePromise(stripePromise_);
-                setPaymentIntentId(paymentIntentId);
+                setPaymentIntentId(paymentIntentId); // FIXME: It doesn't update after Submit.
                 setShowPayment(true);
             }
         }
