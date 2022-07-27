@@ -248,7 +248,6 @@ async fn main() -> Result<(), MyError> {
     let config: Config = toml::from_str(fs::read_to_string(args.config.as_str())?.as_str())?;
 
     let eth_account = {
-        // let mut file = OpenOptions::new().read(true).write(true).create(true).open(config.secrets.ethereum_key_file.clone())?;
         let mut file = OpenOptions::new().read(true).write(true).create(true).open(&config.secrets.ethereum_key_file)?;
         let mut s = "".to_string();
         file.read_to_string(&mut s)?;
