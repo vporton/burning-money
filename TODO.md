@@ -1,2 +1,4 @@
 - `FIXME` and `TODO` in source files.
+- Actually process payments directly after entering.
+- Error message on 3D-secure cards (https://stripe.com/docs/testing#regulatory-cards)
 - https://github.com/sfackler/rust-postgres/issues/926
