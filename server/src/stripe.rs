@@ -211,19 +211,19 @@ pub async fn confirm_payment(
                 conn.execute("DELETE FROM txs WHERE id=$1", &[&id]).await?;
                 return Err(err.into());
             }
-            json!({
-                "requires_action": false,
-                "payment_intent_client_secret": intent.get("client_secret").ok_or(StripeError::new())?
-            })
-        },
-        "succeeded" => {
             { // restrict lock duration
                 let conn = &mut common.lock().await.db;
                 conn.execute("UPDATE txs WHERE id=$1 SET status='ordered'", &[&form.payment_intent_id]).await?;
             }
             common.lock().await.notify_transaction_tx.send(())?;
-            json!({"success": true})
-        }
+            json!({
+                "requires_action": false,
+                "payment_intent_client_secret": intent.get("client_secret").ok_or(StripeError::new())?
+            })
+        },
+        // "succeeded" => {
+        //     json!({"success": true})
+        // }
         "canceled" | "payment_failed" => {
             let collateral_amount: i64 = common.lock().await.db.query_one(
                 "SELECT crypto_amount FROM txs WHERE payment_intent_id=$1",
