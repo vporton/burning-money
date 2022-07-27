@@ -1,13 +1,10 @@
 {
     "hardhat": {
-        "beneficiant": "0x204B2F1F86D79dCC527276e259009e30de5C7107"
     },
     "local": {
-        "beneficiant": "0x204B2F1F86D79dCC527276e259009e30de5C7107"
     },
     "moonbeam": {
         "_comment1": "collateral: GLMR",
-        "collateralOracle": "0x4497B606be93e773bbA5eaCFCb2ac5E2214220Eb",
-        "beneficiant": "0x0000000000000000000000000000000000000000"
+        "collateralOracle": "0x4497B606be93e773bbA5eaCFCb2ac5E2214220Eb"
     }
 }
