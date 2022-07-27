@@ -213,7 +213,7 @@ pub async fn confirm_payment(
             }
             { // restrict lock duration
                 let conn = &mut common.lock().await.db;
-                conn.execute("UPDATE txs SET status='ordered' WHERE id=$1", &[&form.payment_intent_id]).await?;
+                conn.execute("UPDATE txs SET status='ordered' WHERE id=$1", &[&id]).await?;
             }
             common.lock().await.notify_transaction_tx.send(())?;
             json!({
