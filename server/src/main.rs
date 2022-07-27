@@ -53,7 +53,8 @@ pub struct Config {
     url_prefix: String,
     frontend_url_prefix: String,
     ethereum_network: String,
-    ethereum_endpoint: String, // or Url?
+    ethereum_endpoint: String,
+    // or Url?
     pull_ethereum: u16,
     addresses_file: String,
     our_tax: f64,
@@ -98,7 +99,8 @@ pub struct Common {
     program_finished_tx: async_channel::Sender<()>,
     // TODO: Unbounded?
     notify_transaction_tx: mpsc::UnboundedSender<()>,
-    notify_transaction_rx: Arc<Mutex<mpsc::UnboundedReceiver<()>>>, // in Arc not to lock the entire struct for too long
+    notify_transaction_rx: Arc<Mutex<mpsc::UnboundedReceiver<()>>>,
+    // in Arc not to lock the entire struct for too long
     balance: i64,
     locked_funds: i64,
 }
@@ -146,8 +148,9 @@ async fn prepare_data(common: Arc<Mutex<Common>>, readonly: Arc<CommonReadonly>)
 async fn process_current(
     common: Arc<Mutex<Common>>,
     readonly: Arc<CommonReadonly>,
-    program_finished_rx: async_channel::Receiver<()>)
-    -> Result<(), anyhow::Error> {
+    program_finished_rx: async_channel::Receiver<()>
+) -> Result<(), anyhow::Error> {
+    let common2 = common.clone();
     let my_loop = move || {
         let common2 = common.clone();
         let readonly2 = readonly.clone(); // needed?
@@ -171,6 +174,41 @@ async fn process_current(
                 };
                 exchange_item(tx, common2.clone(), &readonly2).await?;
             }
+            Ok::<_, anyhow::Error>(())
+        }
+    };
+
+    let common3 = common2.clone();
+    spawn(interruptible(program_finished_rx, Box::pin(async move {
+        let common = &common3;
+        loop {
+            if let Err(err) = my_loop().await {
+                error!("Error processing transactions: {}", err);
+            }
+            let rc = { // not to lock for too long
+                let guard = common.lock().await;
+                guard.notify_transaction_rx.clone()
+            };
+            rc.lock().await.recv().await;
+        }
+        #[allow(unreachable_code)]
+        Ok::<(), anyhow::Error>(())
+    })));
+
+    Ok(())
+}
+
+async fn process_blocks(
+        common: Arc<Mutex<Common>>,
+        readonly: Arc<CommonReadonly>,
+        program_finished_rx: async_channel::Receiver<()>
+) -> Result<(), anyhow::Error> {
+    let my_loop = move || {
+        let common2 = common.clone();
+        let readonly2 = readonly.clone(); // needed?
+        async move {
+            let common2 = common2.clone();
+            let readonly2 = readonly2.clone(); // needed?
             let readonly2y = &readonly2;
             loop {
                 let config3 = &readonly2y.config;
@@ -197,7 +235,7 @@ async fn process_current(
                                         if common.transactions_awaited.remove(&tx) {
                                             common.db.execute(
                                                 "UPDATE txs SET status='confirmed' WHERE id=$1",
-                                                &[&id]
+                                                &[&id],
                                             ).await?;
                                         }
                                     }
@@ -205,7 +243,7 @@ async fn process_current(
                                 }
                             }
                             common.lock().await.balance = readonly.web3.eth().balance(
-                                SecretKeyRef::new(&readonly.ethereum_key).address(), None
+                                SecretKeyRef::new(&readonly.ethereum_key).address(), None,
                             )
                                 .await?.as_u64() as i64;
                         }
@@ -213,11 +251,6 @@ async fn process_current(
                         break;
                     }
                 }
-                let rc = { // not to lock for too long
-                    let guard = common2.lock().await;
-                    guard.notify_transaction_rx.clone()
-                };
-                rc.lock().await.recv().await;
             }
             #[allow(unreachable_code)]
             Ok::<_, anyhow::Error>(())
@@ -227,7 +260,7 @@ async fn process_current(
     spawn(interruptible(program_finished_rx, Box::pin(async move {
         loop {
             if let Err(err) = my_loop().await {
-                error!("Error processing transactions: {}", err);
+                error!("Error processing blocks: {}", err);
             }
         }
         #[allow(unreachable_code)]
@@ -285,7 +318,7 @@ async fn main() -> Result<(), anyhow::Error> {
         ethereum_key: Arc::new(eth_account),
         addresses: Addresses {
             token: <Address>::from_str(addresses.get("Token").ok_or(CannotLoadDataError::new())?.as_str().ok_or(CannotLoadDataError::new())?)?,
-            collateral_oracle:  <Address>::from_str(addresses.get("collateralOracle").ok_or(CannotLoadDataError::new())?.as_str().ok_or(CannotLoadDataError::new())?)?,
+            collateral_oracle: <Address>::from_str(addresses.get("collateralOracle").ok_or(CannotLoadDataError::new())?.as_str().ok_or(CannotLoadDataError::new())?)?,
         },
         web3: {
             Web3::new(transport)
@@ -342,7 +375,9 @@ async fn main() -> Result<(), anyhow::Error> {
     let readonly2 = readonly2.clone(); // needed?
 
     prepare_data(common2x.clone(), readonly2.clone()).await?;
-    process_current(common2x.clone(), readonly2.clone(), program_finished_rx).await?;
+    // TODO: Possible races between process_current() and process_blocks().
+    process_current(common2x.clone(), readonly2.clone(), program_finished_rx.clone()).await?;
+    process_blocks(common2x.clone(), readonly2.clone(), program_finished_rx).await?;
 
     let factory = move || {
         let cors = Cors::default() // Construct CORS middleware builder
