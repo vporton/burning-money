@@ -1,4 +1,3 @@
--- FIXME: Add 'precreated' not to lose transactions if SIGKILL after finish_payment()?
 CREATE TYPE txs_status_type AS ENUM ('before_ordered', 'ordered', 'submitted_to_blockchain', 'confirmed');
 
 CREATE TABLE txs (
