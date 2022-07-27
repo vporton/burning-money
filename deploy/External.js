@@ -13,7 +13,7 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
         const TestPriceOracle = await ethers.getContractFactory("TestPriceOracle");
         const testPriceOracle = await myDeploy(
             TestPriceOracle, network, deployer, "collateralOracle", [],
-        );    
+        );
     }
 };
 module.exports.tags = ['External'];
