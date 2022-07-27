@@ -230,7 +230,7 @@ pub async fn confirm_payment(
                 &[&form.payment_intent_id])
                 .await?
                 .get(0);
-            lock_funds((**common).clone(), -collateral_amount).await?; // FIXME: not fiat
+            lock_funds((**common).clone(), -collateral_amount).await?;
             common.lock().await.db.execute(
                 "DELETE FROM txs WHERE payment_intent_id=$1",
                 &[&form.payment_intent_id])
