@@ -38,37 +38,39 @@ function PaymentForm(props: { bidDate: Date }) {
     const [showPaymentError, setShowPaymentError] = useState("");
     const [paymentIntentId, setPaymentIntentId] = useState(""); // FIXME: It uses the first successul payment intent ID, rather than for the last entered fiat value.
     const [userAccount, setUserAccount] = useState("");
-    const fiatAmountRef = useRef<HTMLInputElement>(null); // TOOD: Use events instead.
-    useEffect(() => {
-        async function doIt() {
-            const stripePubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text(); // TODO: Fetch it only once.
-            const fiatAmount = fiatAmountRef.current?.value as unknown as number * 100; // FIXME
-            const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`, {
-                method: "POST",
-                credentials: 'include',
-            })).json(); // FIXME
-            if (res.error) {
-                setShowPaymentError(res.error.message);
-                setShowPayment(false);
-            } else {
-                const clientSecret: string = res["client_secret"];
-                const paymentIntentId: string = res["id"];
-                const stripePromise_: Promise<Stripe | null> = loadStripe(stripePubkey, {
-                  betas: ['server_side_confirmation_beta_1'],
-                  apiVersion: '2020-08-27;server_side_confirmation_beta=v1',
-                });
+    const fiatAmountRef = useRef<HTMLInputElement>(null);
+    const payButtonRef = useRef<HTMLButtonElement>(null);
 
-                setOptions({
-                    clientSecret,
-                    appearance: {},
-                });
-                setStripePromise(stripePromise_);
-                setPaymentIntentId(paymentIntentId); // FIXME: It doesn't update after Submit.
-                setShowPayment(true);
-            }
+    async function createPaymentForm() {
+        (fiatAmountRef.current as HTMLInputElement).disabled = true;
+        (payButtonRef.current as HTMLButtonElement).disabled = true;
+
+        const stripePubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text(); // TODO: Fetch it only once.
+        const fiatAmount = fiatAmountRef.current?.value as unknown as number * 100; // FIXME
+        const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`, {
+            method: "POST",
+            credentials: 'include',
+        })).json(); // FIXME
+        if (res.error) {
+            setShowPaymentError(res.error.message);
+            setShowPayment(false);
+        } else {
+            const clientSecret: string = res["client_secret"];
+            const paymentIntentId: string = res["id"];
+            const stripePromise_: Promise<Stripe | null> = loadStripe(stripePubkey, {
+                betas: ['server_side_confirmation_beta_1'],
+                apiVersion: '2020-08-27;server_side_confirmation_beta=v1',
+            });
+
+            setOptions({
+                clientSecret,
+                appearance: {},
+            });
+            setStripePromise(stripePromise_);
+            setPaymentIntentId(paymentIntentId); // FIXME: It doesn't update after Submit.
+            setShowPayment(true);
         }
-        doIt();
-    }, [fiatAmount]);
+    }
 
     return (
         <>
@@ -78,6 +80,7 @@ function PaymentForm(props: { bidDate: Date }) {
                 <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
                 <input type="number" id="fiatAmount" ref={fiatAmountRef}
                     onChange={e => setFiatAmount(e.target.value as unknown as number)}/> {/* FIXME */}
+                <button ref={payButtonRef} disabled={fiatAmount < 0.5} onClick={e => createPaymentForm()}>Pay</button>
             </p>
             {showPayment && <Elements stripe={stripePromise} options={options}>
                 <PaymentFormContent paymentIntentId={paymentIntentId} userAccount={userAccount} bidDate={props.bidDate}/>
