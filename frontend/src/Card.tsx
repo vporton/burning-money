@@ -12,7 +12,7 @@ export default function Card(props: { bidDate: Date }) {
         .then(u => {
             setUser(u.id);
         });
-    function logout() { // FIXME: It doesn't work.
+    function logout() {
         window.fetch(backendUrlPrefix + "/logout", {
             method: "POST",
             credentials: 'include',

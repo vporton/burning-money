@@ -33,7 +33,7 @@ use crate::errors::{CannotLoadDataError, MyError, StripeError};
 use crate::models::Tx;
 use crate::pages::{about_us, not_found};
 use crate::stripe::{confirm_payment, create_payment_intent, exchange_item, lock_funds, stripe_public_key};
-use crate::user::{user_identity, user_login, user_register};
+use crate::user::{user_identity, user_login, user_logout, user_register};
 
 mod pages;
 mod errors;
@@ -357,7 +357,7 @@ async fn main() -> Result<(), anyhow::Error> {
             .service(user_identity)
             .service(user_register)
             .service(user_login)
-            // .service(user_logout) // TODO
+            .service(user_logout)
             .service(about_us)
             .service(stripe_public_key)
             .service(create_payment_intent)
