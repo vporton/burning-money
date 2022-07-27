@@ -258,13 +258,16 @@ pub async fn exchange_item(item: crate::models::Tx, common: Arc<Mutex<Common>>, 
     let naive = NaiveDateTime::from_timestamp(item.bid_date, 0);
 
     // First submit to blockchain to avoid double submissions.
-    let conn = &common.lock().await.db;
-    conn.execute("UPDATE txs SET status='submitted_to_blockchain' WHERE id=$1", &[&item.id]).await?;
     let tx = do_exchange(
         &readonly,
         (<&[u8; 20]>::try_from(item.eth_account.as_slice())?).into(),
         DateTime::from_utc(naive, Utc),
         item.crypto_amount,
+    ).await?;
+    let conn = &common.lock().await.db;
+    conn.execute(
+        "UPDATE txs SET status='submitted_to_blockchain', tx_id=$2 WHERE id=$1",
+        &[&item.id, &tx.as_bytes()]
     ).await?;
     common.lock().await.transactions_awaited.insert(tx);
     Ok(())
