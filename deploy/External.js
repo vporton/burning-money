@@ -17,10 +17,13 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
         );
 
         const serverAccount = new ethers.Wallet('0x' + fs.readFileSync("server/ethereum.priv"));
+        const serverAddress = await serverAccount.getAddress();
+        console.log("Server address: ", serverAddress);
         await deployerSigner.sendTransaction({
-            to: await serverAccount.getAddress(),
+            to: serverAddress,
             value: ethers.utils.parseEther("0.5"),
         });
+        console.log(`Server account funding ${await ethers.provider.getBalance(serverAddress)}`)
     }
 };
 module.exports.tags = ['External'];

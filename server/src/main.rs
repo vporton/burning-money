@@ -23,7 +23,7 @@ use web3::signing::{Key, SecretKeyRef};
 use web3::transports::Http;
 use web3::types::{Address, BlockId, H256};
 use web3::Web3;
-use log::error;
+use log::{error, info};
 use tokio::spawn;
 use tokio_interruptible_future::interruptible;
 use tokio_postgres::NoTls;
@@ -306,6 +306,7 @@ async fn main() -> Result<(), anyhow::Error> {
             }
         }
     };
+    info!("Ethereum address: {}", SecretKeyRef::new(&eth_account).address());
     let config2 = config.clone();
 
     let addresses: Value = serde_json::from_str(fs::read_to_string(config.addresses_file.as_str())?.as_str())?;
@@ -336,6 +337,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let (program_finished_tx, program_finished_rx) = async_channel::bounded(1);
     let balance = readonly.web3.eth().balance(
         SecretKeyRef::new(&readonly.ethereum_key).address(), None).await?;
+    info!("Ethereum balance: {balance}");
     let common = Arc::new(Mutex::new(Common {
         db: client,
         transactions_awaited: HashSet::new(),
