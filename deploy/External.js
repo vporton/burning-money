@@ -17,7 +17,7 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
         );
 
         const serverAccount = new ethers.Wallet('0x' + fs.readFileSync("server/ethereum.priv"));
-        deployerSigner.sendTransaction({
+        await deployerSigner.sendTransaction({
             to: await serverAccount.getAddress(),
             value: ethers.utils.parseEther("0.5"),
         });
