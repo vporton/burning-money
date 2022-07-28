@@ -35,7 +35,7 @@ export default function Bid() {
         await (window as any).ethereum.enable();
         const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
         const { chainId } = await provider.getNetwork();
-        if(!CHAINS[chainId] || CHAINS[chainId] !in deployed) {
+        if(!CHAINS[chainId] || !(CHAINS[chainId] in deployed)) {
             alert("This chain is not supported"); // TODO
             return;
         }
