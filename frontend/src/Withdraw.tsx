@@ -42,7 +42,7 @@ export default function Withdraw() {
         const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
         const { chainId } = await provider.getNetwork();
         const addrs = (deployed as any)[CHAINS[chainId]];
-        if(!CHAINS[chainId] || CHAINS[chainId] !in deployed) {
+        if(!CHAINS[chainId] || !(CHAINS[chainId] in deployed)) {
             alert("This chain is not supported"); // TODO
             return;
         }

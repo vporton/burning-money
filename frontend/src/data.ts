@@ -5,7 +5,7 @@ export const CHAINS: { [name: string]: string } = {
     '5': 'goerli',
     '42': 'kovan',
     '1337': 'local',
-    '31337': 'local', // HarrdHat node
+    '31337': 'local', // HardHat node
     '122': 'fuse',
     '80001': 'mumbai',
     '137': 'matic',
