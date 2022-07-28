@@ -114,7 +114,7 @@ async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bi
         )?;
     let tx = token.signed_call(
         "bidOn",
-        (bid_date.timestamp(), crypto_amount, crypto_account),
+        (U256::from(bid_date.timestamp()), U256::from(crypto_amount), crypto_account),
         Options::default(),
         readonly.ethereum_key.clone(),
     ).await?;

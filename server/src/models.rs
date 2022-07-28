@@ -8,5 +8,5 @@ pub struct Tx {
     pub crypto_amount: i64,
     pub bid_date: i64,
     pub status: TxsStatusType,
-    pub tx_id: Vec<u8>,
+    pub tx_id: Option<Vec<u8>>,
 }

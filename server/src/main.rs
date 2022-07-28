@@ -183,7 +183,7 @@ async fn process_current(
         let common = &common3;
         loop {
             if let Err(err) = my_loop().await {
-                error!("Error processing transactions: {}", err);
+                error!("Error processing transactions: {}\n{}", err, err.backtrace().to_string()); // TODO
             }
             let rc = { // not to lock for too long
                 let guard = common.lock().await;
