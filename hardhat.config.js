@@ -42,8 +42,8 @@ module.exports = {
     local: {
       url: "http://localhost:8545",
       accounts: [
-        "2366a48160bcc5f0cef8bbace95928130d3aabe972475cea2c1b978ebcad4212", // 0xe9243658aFAD5CEAd2e6ca3C0E44087EcA1D11A3
-        "34bc09a2210e5a1e2cf34cee3e1e7cc73cbe6ae3cdf2dec15b15dd1a814c9540", // 0xFbe0204Ffa36E3C621331d36FB566352e1EB1F7e
+        "0x74b9eca92a6d3e5274c3cec8e5d869d2df8f5a75caab0df949a1a60c064bdd41", // 0x72F7Fe922C0A829c92E90794abA85940319D453E
+        "0x3569575d34e46721b7932ced96053a26ae2e29ef6de61a6131a9bb7038761d54", // 0xbBF7056D91F05858c4534B325af042750BE70B84
       ],
     },
   },

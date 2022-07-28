@@ -18,6 +18,7 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
             "CardToken", "CT",
         ],
     );
+    console.log(`Token contract at ${await token.address}`)
 
     const feeManager = await ethers.getContractAt("CentralisedFeeManager", getAddress(network.name, "CentralisedFeeManager"))
     await feeManager.setTokenAllowed(getAddress(network.name, "Token"), true);

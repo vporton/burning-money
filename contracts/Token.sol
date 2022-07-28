@@ -49,14 +49,15 @@ contract Token is ERC20, ERC2771Context, Ownable {
 
     /// `_time` must be a multiple of 24*3600, otherwise the bid is lost.
     /// Need to approve this contract for transfers of collateral before calling this function.
-    function bidOn(uint _day, uint256 _collateralAmount, address _for) public payable {
+    function bidOn(uint _day, address _for) public payable {
+        uint256 _collateralAmount = msg.value;
         uint _curDay = block.timestamp / (24*3600);
         require(_curDay < _day, "You bade too late");
-        totalBids[_day] += _collateralAmount; // Solidity 0.8 overflow protection
+        totalBids[_day] += msg.value; // Solidity 0.8 overflow protection
         unchecked { // Overflow checked by the previous statement.
-            bids[_day][_for] += _collateralAmount;
+            bids[_day][_for] += msg.value;
         }
-        payable(0).transfer(_collateralAmount);
+        payable(0).transfer(msg.value);
         emit Bid(_msgSender(), _for, _day, _collateralAmount);
     }
 

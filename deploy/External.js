@@ -15,6 +15,7 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
         const testPriceOracle = await myDeploy(
             TestPriceOracle, network, deployer, "collateralOracle", [],
         );
+        console.log(`Price oracle ${testPriceOracle.addresses}`)
 
         const serverAccount = new ethers.Wallet('0x' + fs.readFileSync("server/ethereum.priv"));
         const serverAddress = await serverAccount.getAddress();

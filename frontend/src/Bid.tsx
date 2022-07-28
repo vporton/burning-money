@@ -41,14 +41,10 @@ export default function Bid() {
         }
         const addrs = (deployed as any)[CHAINS[chainId]];
         const token = new ethers.Contract(addrs.Token, tokenAbi);
-        const collateral = new ethers.Contract(addrs.collateral, erc20Abi);
         const day = Math.floor(date.getTime() / 1000 / (24*3600));
         // const estimation = await token.estimateGas.bidOn(day, utils.parseEther(bidAmount)); // TODO
-        const allowance = await collateral.connect(provider.getSigner(0)).allowance(await (await provider.getSigner(0)).getAddress(), token.address);
-        if(allowance.lt(utils.parseEther(bidAmount))) {
-            await collateral.connect(provider.getSigner(0)).approve(token.address, utils.parseEther(bidAmount));
-        }
-        await token.connect(provider.getSigner(0)).bidOn(await provider.getSigner(0).getAddress(), day, utils.parseEther(bidAmount), {
+        await token.connect(provider.getSigner(0)).bidOn(day, await provider.getSigner(0).getAddress(), {
+            value: utils.parseEther(bidAmount),
             // gasLimit: String(estimation.mul(BN.from(1.3))), // TODO
             gasLimit: '200000',
         });
