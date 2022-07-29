@@ -61,6 +61,7 @@ pub async fn create_payment_intent(
         .header("Stripe-Version", "2020-08-27; server_side_confirmation_beta=v1")
         .form(&params)
         .send().await?;
+    // info!("STRIPE: {}", String::from_utf8_lossy(res.bytes().await?.as_ref()));
     #[derive(Deserialize, Serialize)]
     struct Data {
         id: String,
@@ -68,6 +69,7 @@ pub async fn create_payment_intent(
     }
     let data: Data = serde_json::from_slice(res.bytes().await?.as_ref())?;
     Ok(web::Json(data))
+    // Ok(web::Json("{}"))
 }
 
 async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly>) -> Result<(), anyhow::Error> {
