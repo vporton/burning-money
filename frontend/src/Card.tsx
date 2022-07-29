@@ -4,6 +4,7 @@ import { FormEvent, RefObject, useEffect, useRef, useState } from "react";
 import { backendUrlPrefix } from "./config";
 import React from 'react';
 import { NavLink } from "react-router-dom";
+import { EthAddress } from "./components/EthAddress";
 
 export default function Card(props: { bidDate: Date }) {
     const [user, setUser] = useState<string | null>(null);
@@ -39,6 +40,7 @@ function PaymentForm(props: { bidDate: Date }) {
     const [showPaymentError, setShowPaymentError] = useState("");
     const [paymentIntentId, setPaymentIntentId] = useState("");
     const [userAccount, setUserAccount] = useState("");
+    const [ethAddrValid, setEthAddrValid] = useState(false);
     const fiatAmountRef = useRef<HTMLInputElement>(null);
     const payButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -93,11 +95,11 @@ function PaymentForm(props: { bidDate: Date }) {
         <>
             <p>
                 <label htmlFor="userAccount">Your crypto account:</label> {" "}
-                <input type="text" id="userAccount" onChange={e => setUserAccount(e.target.value)}/> {" "}
+                <EthAddress id="userAccount" onChange={(e: any) => setUserAccount(e.target.value)} onValid={setEthAddrValid}/> {" "}
                 <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
                 <input type="number" id="fiatAmount" ref={fiatAmountRef}
                     onChange={e => setFiatAmountFromInput(e.target)} disabled={showingPayment}/> {" "}
-                <button ref={payButtonRef} disabled={fiatAmount < 0.5 || !stripePromise || showingPayment} onClick={e => doShowPayment()}
+                <button ref={payButtonRef} disabled={!ethAddrValid || fiatAmount < 0.5 || !stripePromise || showingPayment} onClick={e => doShowPayment()}
                 >Next &gt;&gt;</button>
                 {showingPayment ?
                     <>
