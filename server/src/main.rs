@@ -185,7 +185,7 @@ async fn process_current(
         let common = &common3;
         loop {
             if let Err(err) = my_loop().await {
-                error!("Error processing transactions: {}\n{}", err, err.backtrace().to_string()); // TODO
+                error!("Error processing transactions: {}", err);
             }
             let rc = { // not to lock for too long
                 let guard = common.lock().await;
@@ -225,7 +225,7 @@ async fn process_blocks(
                     let common = common2.clone();
                     if let Some(block_hash) = stream.next().await {
                         let block_hash = block_hash?;
-                        if let Some(block) = readonly.web3.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
+                        if let Some(block) = readonly.web3.eth().block(BlockId::Hash(block_hash)).await? {
                             // We assume that our account can be funded by others, but only we withdraw.
                             // First remove from the locked funds, then update balance, for no races.
                             // (Balance may decrease only after having locked a sum.)
