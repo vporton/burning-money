@@ -27,7 +27,7 @@ module.exports = async ({getNamedAccounts, getUnnamedAccounts, deployments}) => 
           ),
           ethers.utils.id(domainData.name),
           ethers.utils.id(domainData.version),
-          domainData.verifyingContract, // FIXME
+          domainData.verifyingContract,
           domainData.salt,
         ]
       )
