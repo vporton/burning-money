@@ -218,7 +218,7 @@ pub async fn confirm_payment(
                 let conn = &mut common.lock().await.db;
                 conn.execute("UPDATE txs SET status='ordered' WHERE id=$1", &[&id]).await?;
             }
-            common.lock().await.notify_transaction_tx.send(())?;
+            common.lock().await.notify_ordered_tx.send(())?;
             json!({
                 "requires_action": false,
                 "payment_intent_client_secret": intent.get("client_secret").ok_or(StripeError::new())?

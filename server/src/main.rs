@@ -1,6 +1,6 @@
 use futures::stream::StreamExt;
 use std::collections::HashSet;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{mpsc, Mutex, Semaphore};
 use serde_derive::Deserialize;
 use std::fs;
 use std::fs::OpenOptions;
@@ -98,8 +98,10 @@ pub struct Common {
     transactions_awaited: HashSet<H256>,
     program_finished_tx: async_channel::Sender<()>,
     // TODO: Unbounded?
-    notify_transaction_tx: mpsc::UnboundedSender<()>,
-    notify_transaction_rx: Arc<Mutex<mpsc::UnboundedReceiver<()>>>,
+    notify_ordered_tx: mpsc::UnboundedSender<()>,
+    notify_ordered_rx: Arc<Mutex<mpsc::UnboundedReceiver<()>>>,
+    // notify_tx_submitted_tx: mpsc::UnboundedSender<()>,
+    // notify_tx_submitted_rx: Arc<Mutex<mpsc::UnboundedReceiver<()>>>,
     // in Arc not to lock the entire struct for too long
     balance: i64,
     locked_funds: i64,
@@ -144,7 +146,7 @@ async fn prepare_data(common: Arc<Mutex<Common>>, readonly: Arc<CommonReadonly>)
     Ok(())
 }
 
-/// Starts a fiber that processes currently added payments.
+/// Starts a fiber that processes ordered payments.
 async fn process_current(
     common: Arc<Mutex<Common>>,
     readonly: Arc<CommonReadonly>,
@@ -187,7 +189,7 @@ async fn process_current(
             }
             let rc = { // not to lock for too long
                 let guard = common.lock().await;
-                guard.notify_transaction_rx.clone()
+                guard.notify_ordered_rx.clone()
             };
             rc.lock().await.recv().await;
         }
@@ -203,6 +205,9 @@ async fn process_blocks(
         readonly: Arc<CommonReadonly>,
         program_finished_rx: async_channel::Receiver<()>
 ) -> Result<(), anyhow::Error> {
+    let common3 = common.clone();
+    let readonly2 = readonly.clone();
+
     let my_loop = move || {
         let common2 = common.clone();
         let readonly2 = readonly.clone(); // needed?
@@ -218,7 +223,6 @@ async fn process_blocks(
                 let readonly = readonly2.clone();
                 loop {
                     let common = common2.clone();
-                    // FIXME: What to do on errors?
                     if let Some(block_hash) = stream.next().await {
                         let block_hash = block_hash?;
                         if let Some(block) = readonly.web3.eth().block(BlockId::Hash(block_hash)).await? { // TODO: `if let` correct?
@@ -266,6 +270,31 @@ async fn process_blocks(
         #[allow(unreachable_code)]
         Ok::<(), anyhow::Error>(())
     })));
+
+    // FIXME: Run this only after waiting for the first block starts (for no races).
+    { // block
+        let rows =
+            common3.lock().await.db.query("SELECT tx_id FROM txs WHERE status='submitted_to_blockchain'", &[])
+                .await?;
+        for row in rows {
+            let tx = H256::from_slice(row.get(0));
+            let common3 = common3.clone();
+            let readonly2 = readonly2.clone();
+            spawn((move || async move {
+                let _semaphore = Semaphore::new(10); // TODO: Make configurable.
+                let receipt = readonly2.clone().web3.eth().transaction_receipt(tx).await?;
+                if receipt.is_some() {
+                    common3.lock().await.transactions_awaited.remove(&tx);
+                    let conn = &common3.lock().await.db;
+                    conn.execute(
+                        "UPDATE txs SET status='confirmed' WHERE, tx_id=$1",
+                        &[&tx.as_bytes()]
+                    ).await?;
+                }
+                Ok::<_, anyhow::Error>(())
+            })());
+        }
+    }
 
     Ok(())
 }
@@ -325,7 +354,8 @@ async fn main() -> Result<(), anyhow::Error> {
             Web3::new(transport)
         },
     };
-    let (notify_transaction_tx, notify_transaction_rx) = mpsc::unbounded_channel();
+    let (notify_ordered_tx, notify_ordered_rx) = mpsc::unbounded_channel();
+    // let (notify_tx_submitted_tx, notify_tx_submitted_rx) = mpsc::unbounded_channel();
     let (client, connection) =
         tokio_postgres::connect(config2.database.conn_string.as_str(), NoTls).await?;
     tokio::spawn(async move {
@@ -342,8 +372,10 @@ async fn main() -> Result<(), anyhow::Error> {
         db: client,
         transactions_awaited: HashSet::new(),
         program_finished_tx,
-        notify_transaction_tx,
-        notify_transaction_rx: Arc::new(Mutex::new(notify_transaction_rx)),
+        notify_ordered_tx,
+        notify_ordered_rx: Arc::new(Mutex::new(notify_ordered_rx)),
+        // notify_tx_submitted_tx,
+        // notify_tx_submitted_rx: Arc::new(Mutex::new(notify_tx_submitted_rx)),
         balance: balance.as_u64() as i64,
         locked_funds: 0,
     }));
