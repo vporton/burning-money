@@ -297,7 +297,7 @@ async fn process_blocks(
                     common3.lock().await.transactions_awaited.remove(&tx);
                     let conn = &common3.lock().await.db;
                     conn.execute(
-                        "UPDATE txs SET status='confirmed' WHERE, tx_id=$1",
+                        "UPDATE txs SET status='confirmed' WHERE tx_id=$1",
                         &[&tx.as_bytes()]
                     ).await?;
                 }
