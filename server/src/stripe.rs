@@ -267,11 +267,13 @@ pub async fn exchange_item(item: crate::models::Tx, common: Arc<Mutex<Common>>, 
         DateTime::from_utc(naive, Utc),
         item.crypto_amount,
     ).await?;
-    let conn = &common.lock().await.db;
-    conn.execute(
-        "UPDATE txs SET status='submitted_to_blockchain', tx_id=$2 WHERE id=$1",
-        &[&item.id, &tx.as_bytes()]
-    ).await?;
+    { // restrict lock duration
+        let conn = &common.lock().await.db;
+        conn.execute(
+            "UPDATE txs SET status='submitted_to_blockchain', tx_id=$2 WHERE id=$1",
+            &[&item.id, &tx.as_bytes()]
+        ).await?;
+    }
     common.lock().await.transactions_awaited.insert(tx);
     Ok(())
 }

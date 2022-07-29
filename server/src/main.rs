@@ -255,6 +255,7 @@ async fn process_blocks(
                                     lock_funds(common.clone(), -amount).await?;
                                 }
                             }
+                            // TODO: The following is a lock for an extended period of time.
                             common.lock().await.balance = readonly.web3.eth().balance(
                                 SecretKeyRef::new(&readonly.ethereum_key).address(), None,
                             )
