@@ -84,6 +84,7 @@ async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly
 }
 
 pub async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), anyhow::Error> {
+    debug!("Add to locked crypto {}", amount);
     let mut common = common.lock().await; // locks for all duration of the function
     const MAX_GAS: i64 = 30_000_000; // TODO: less
     let locked_funds = if common.locked_funds >= 0 { // hack
