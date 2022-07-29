@@ -10,7 +10,6 @@ import { Login, Register } from './User';
 function MyNavLink(props: {to: string, children: ReactNode}) {
     return (
         // TODO: className instead.
-        // FIXME: isActive does not work as expected.
         <NavLink to={props.to}
             className={({ isActive }) => (isActive ? 'active' : 'inactive')}
         >{props.children}</NavLink>
