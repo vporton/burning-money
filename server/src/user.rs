@@ -41,7 +41,7 @@ pub async fn user_register(request: HttpRequest, info: web::Form<User>, common: 
     let info = info.clone();
     let common = &**common;
     let v_id: i64 = { // restrict lock duration
-        let conn = &mut common.lock().await.db;
+        let conn = &common.lock().await.db;
         conn.query_one(
             "INSERT INTO users (first_name, last_name, email, password) VALUES($1, $2, $3, $4) RETURNING id",
             &[&info.first_name, &info.last_name, &info.email, &info.password],
