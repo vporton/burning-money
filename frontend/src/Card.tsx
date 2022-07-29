@@ -152,7 +152,6 @@ function PaymentFormContent(props: any) { // TODO: `any`
                 }).then(function (res) {
                     return res.json();
                 }).then(function (paymentResponse) {
-                    console.log('paymentResponse: ', paymentResponse)
                     handleServerResponse(paymentResponse);
                 });
             }
