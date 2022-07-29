@@ -12,7 +12,6 @@ contract Token is ERC20, ERC2771Context, Ownable {
     using ABDKMath64x64 for int128;
 
     int128 public growthRate;
-    mapping (address => address) public referrals;
     mapping (uint => mapping(address => uint256)) public bids; // time => (address => bid)
     mapping (uint => uint256) public totalBids; // time => total bid
 
@@ -32,20 +31,6 @@ contract Token is ERC20, ERC2771Context, Ownable {
         require(referrals[_msgSender()] == address(0));
         referrals[_msgSender()] = _referral;
         emit SetReferral(_msgSender(), _referral);
-    }
-
-    // FIXME: It seems that this can produce an unlimited amount of money.
-    function _mint(address _account, uint256 _amount) internal override {
-        ERC20._mint(_account, _amount);
-        address _referral = referrals[_account];
-        if (_referral != address(0)) {
-            ERC20._mint(_referral, _amount / 4);  // 25% first level referral
-            _referral = referrals[_referral];
-            if (_referral != address(0)) {
-                ERC20._mint(_referral, _amount / 10); // 10% second level referral
-            }
-        }
-        emit OurMint(_msgSender(), _account, _amount);
     }
 
     /// `_time` must be a multiple of 24*3600, otherwise the bid is lost.
