@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import validators from "./validators";
 
+// TODO: ENS
 export function EthAddress(props: any) {
     const [value, setValue] = useState(props.defaultValue || "");
     const [valid, setValid] = useState(false);
