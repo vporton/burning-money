@@ -42,9 +42,7 @@ function PaymentForm(props: { bidDate: Date }) {
     const fiatAmountRef = useRef<HTMLInputElement>(null);
     const payButtonRef = useRef<HTMLButtonElement>(null);
 
-    async function doShowPayment() {
-        setShowingPayment(true);
-
+    async function createPaymentIntent() {
         const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`, {
             method: "POST",
             credentials: 'include',
@@ -62,8 +60,13 @@ function PaymentForm(props: { bidDate: Date }) {
                 appearance: {},
             });
             setPaymentIntentId(paymentIntentId);
-            setShowPayment(true);
         }
+    }
+
+    async function doShowPayment() {
+        setShowingPayment(true);
+        await createPaymentIntent();
+        setShowPayment(true);
     }
 
     useEffect(() => {
@@ -96,9 +99,16 @@ function PaymentForm(props: { bidDate: Date }) {
                     onChange={e => setFiatAmountFromInput(e.target)} disabled={showingPayment}/> {" "}
                 <button ref={payButtonRef} disabled={fiatAmount < 0.5 || !stripePromise || showingPayment} onClick={e => doShowPayment()}
                 >Next &gt;&gt;</button>
+                {showingPayment ?
+                    <>
+                        {" "}
+                        <button onClick={() => { setShowingPayment(false); setShowPayment(false); createPaymentIntent(); }}>&lt;&lt; Back</button>
+                    </>
+                    : ""}
             </p>
             {showPayment && <Elements stripe={stripePromise} options={options}>
-                <PaymentFormContent paymentIntentId={paymentIntentId} userAccount={userAccount} bidDate={props.bidDate} onPayClicked={onPayClicked}/>
+                <PaymentFormContent paymentIntentId={paymentIntentId} userAccount={userAccount} bidDate={props.bidDate} onPayClicked={onPayClicked}
+                onPaid={() => {setShowingPayment(false); setShowPayment(false);}}/>
             </Elements>}
             {!showPayment && <p>{showPaymentError}</p>}
         </>
@@ -130,6 +140,7 @@ function PaymentFormContent(props: any) { // TODO: `any`
                     alert("Success."); // FIXME
                 }
             } else {
+                props.onPaid();
                 alert("You've paid."); // TODO
             }
           }
