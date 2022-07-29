@@ -36,7 +36,7 @@ function PaymentForm(props: { bidDate: Date }) {
     const [fiatAmount, setFiatAmount] = useState(0);
     const [showPayment, setShowPayment] = useState(false);
     const [showPaymentError, setShowPaymentError] = useState("");
-    const [paymentIntentId, setPaymentIntentId] = useState(""); // FIXME: It uses the first successul payment intent ID, rather than for the last entered fiat value.
+    const [paymentIntentId, setPaymentIntentId] = useState("");
     const [userAccount, setUserAccount] = useState("");
     const fiatAmountRef = useRef<HTMLInputElement>(null);
     const payButtonRef = useRef<HTMLButtonElement>(null);
