@@ -69,11 +69,11 @@ pub async fn create_payment_intent(
     }
     let reply = res.bytes().await?;
     let reply = reply.as_ref();
-    if let Ok(data) = serde_json::from_slice(reply) {
+    if let Ok(data) = serde_json::from_slice::<Value>(reply) {
         Ok(web::Json(data)).into()
     } else {
         // Return error:
-        let s = String::from_utf8_lossy(reply).to_string();
+        let s = serde_json::from_slice::<Value>(reply)?;
         Ok(web::Json(s))
     }
 }
