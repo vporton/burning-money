@@ -80,7 +80,7 @@ function PaymentForm(props: { bidDate: Date }) {
                 <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
                 <input type="number" id="fiatAmount" ref={fiatAmountRef}
                     onChange={e => setFiatAmount(e.target.value as unknown as number)}/> {/* FIXME */}
-                <button ref={payButtonRef} disabled={fiatAmount < 0.5} onClick={e => createPaymentForm()}>Pay</button>
+                <button ref={payButtonRef} disabled={fiatAmount < 0.5} onClick={e => createPaymentForm()}>Next &gt;&gt;</button>
             </p>
             {showPayment && <Elements stripe={stripePromise} options={options}>
                 <PaymentFormContent paymentIntentId={paymentIntentId} userAccount={userAccount} bidDate={props.bidDate}/>
