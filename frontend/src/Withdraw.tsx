@@ -14,7 +14,7 @@ export default function Withdraw() {
     const maxDate = new Date();
     // maxDate.setDate(maxDate.getDate() - 1);
     const [date, setDate] = useState(maxDate);
-    const [amount, setAmount] = useState<number | null>(null);
+    const [amount, setAmount] = useState<number>(0);
     const [withdrawn, setWithdrawn] = useState(false);
 
     useEffect(() => {
@@ -57,7 +57,7 @@ export default function Withdraw() {
     return (
         <>
             <p>Withdraw for bid date: <Calendar maxDate={maxDate} defaultValue={maxDate} onChange={setDate}/></p>
-            <p><button onClick={withdraw}>Withdraw</button> <span>{amount === null ? '' : utils.formatEther(amount)}</span> CT{" "}
+            <p><button onClick={withdraw}>Withdraw</button> <span>{amount === 0 ? '' : utils.formatEther(amount)}</span> CT{" "}
                 {withdrawn ? "already withdrawn" : "not withdrawn"}
             </p>
         </>

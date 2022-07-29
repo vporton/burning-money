@@ -12,11 +12,13 @@ contract Token is ERC20, ERC2771Context, Ownable {
     using ABDKMath64x64 for int128;
 
     int128 public growthRate;
+    int128 public shift;
     mapping (uint64 => mapping(address => uint256)) public bids; // time => (address => bid)
     mapping (uint64 => uint256) public totalBids; // time => total bid
 
     constructor(
         int128 _growthRate,
+        int128 _shift,
         address _trustedForwarder,
         string memory _name,
         string memory _symbol
@@ -24,7 +26,8 @@ contract Token is ERC20, ERC2771Context, Ownable {
         ERC2771Context(_trustedForwarder) ERC20(_name, _symbol)
     {
         growthRate = _growthRate;
-        emit TokenCreated(_growthRate, _trustedForwarder, _name, _symbol);
+        shift = _shift;
+        emit TokenCreated(_growthRate, _shift, _trustedForwarder, _name, _symbol);
     }
 
     /// `_time` must be a multiple of 24*3600, otherwise the bid is lost.
@@ -42,7 +45,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
     }
 
     function withdrawalAmount(uint64 _day) public view returns(uint256) {
-        int128 _ourTokenAmount = growthRate.mul(int128(uint128(_day))).exp_2();
+        int128 _ourTokenAmount = growthRate.mul(int128(uint128(_day))).add(shift).exp_2();
         int128 _share = ABDKMath64x64.divu(bids[_day][_msgSender()], totalBids[_day]);
         return uint256(int256(_ourTokenAmount.mul(_share)));
     }
@@ -66,6 +69,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
 
     event TokenCreated(
         int128 growthRate,
+        int128 shift,
         address trustedForwarder,
         string name,
         string symbol
