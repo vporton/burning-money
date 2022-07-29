@@ -34,6 +34,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
         emit SetReferral(_msgSender(), _referral);
     }
 
+    // FIXME: It seems that this can produce an unlimited amount of money.
     function _mint(address _account, uint256 _amount) internal override {
         ERC20._mint(_account, _amount);
         address _referral = referrals[_account];
