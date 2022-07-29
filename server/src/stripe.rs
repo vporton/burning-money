@@ -118,7 +118,7 @@ async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bi
             serde_json::from_slice::<Value>(
                 include_bytes!("../../artifacts/contracts/Token.sol/Token.json")
             ).unwrap()["abi"].to_string().as_bytes(),
-            // r#"[{"type":"function","name":"bidOn","inputs":[{"name":"_day","type":"uint256"},{"name":"_collateralAmount","type":"uint256"},{"name":"_for","type":"address"}],"outputs":[],"stateMutability":"payable"}]"#
+            // r#"[{"type":"function","name":"bidOn","inputs":[{"name":"_day","type":"uint64"},{"name":"_collateralAmount","type":"uint256"},{"name":"_for","type":"address"}],"outputs":[],"stateMutability":"payable"}]"#
             //     .as_bytes()
         )?;
     let tx = token.signed_call(
