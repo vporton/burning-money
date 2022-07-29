@@ -260,7 +260,6 @@ pub async fn confirm_payment(
 }
 
 pub async fn exchange_item(item: crate::models::Tx, common: Arc<Mutex<Common>>, readonly: &Arc<CommonReadonly>) -> Result<(), anyhow::Error> {
-    lock_funds(common.clone(), -item.crypto_amount).await?;
     let naive = NaiveDateTime::from_timestamp(item.bid_date, 0);
 
     // First submit to blockchain to avoid double submissions.
