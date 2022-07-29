@@ -23,7 +23,7 @@ use web3::signing::{Key, SecretKeyRef};
 use web3::transports::Http;
 use web3::types::{Address, BlockId, H256};
 use web3::Web3;
-use log::{error, info};
+use log::{debug, error, info};
 use tokio::spawn;
 use tokio_interruptible_future::interruptible;
 use tokio_postgres::NoTls;
@@ -229,6 +229,15 @@ async fn process_blocks(
                             // We assume that our account can be funded by others, but only we withdraw.
                             // First remove from the locked funds, then update balance, for no races.
                             // (Balance may decrease only after having locked a sum.)
+                            if let (Some(number), false) = (block.number, block.transactions.is_empty()) {
+                                debug!(
+                                    "BLOCK #{} txs: {}",
+                                    number,
+                                    block.transactions.iter().map(|t| t.to_string() + " ").collect::<String>());
+                                debug!(
+                                    "AWAITED: {}",
+                                    common.lock().await.transactions_awaited.iter().map(|t| t.to_string() + " ").collect::<String>());
+                            }
                             for tx in block.transactions {
                                 let row = common.lock().await.db
                                     .query_opt("SELECT id, crypto_amount FROM txs WHERE tx_id=$1", &[&tx.as_bytes()]).await?;
