@@ -27,12 +27,6 @@ contract Token is ERC20, ERC2771Context, Ownable {
         emit TokenCreated(_growthRate, _trustedForwarder, _name, _symbol);
     }
 
-    function setReferral(address _referral) public {
-        require(referrals[_msgSender()] == address(0));
-        referrals[_msgSender()] = _referral;
-        emit SetReferral(_msgSender(), _referral);
-    }
-
     /// `_time` must be a multiple of 24*3600, otherwise the bid is lost.
     /// Need to approve this contract for transfers of collateral before calling this function.
     function bidOn(uint _day, address _for) public payable {
