@@ -25,6 +25,7 @@ export default function Withdraw() {
             const addrs = (deployed as any)[CHAINS[chainId]];
             const day = Math.floor(date.getTime() / 1000 / (24*3600));
             const token = new ethers.Contract(addrs.Token, tokenAbi);
+            console.log(BN.from(day))
             const totalBid = await token.connect(provider.getSigner(0)).totalBids(BN.from(day));
             if(totalBid.eq(BN.from(0))) {
                 setAmount(0);

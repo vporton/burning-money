@@ -13,8 +13,8 @@ contract Token is ERC20, ERC2771Context, Ownable {
 
     int128 public growthRate;
     int128 public shift;
-    mapping (uint64 => mapping(address => uint256)) public bids; // time => (address => bid)
-    mapping (uint64 => uint256) public totalBids; // time => total bid
+    mapping (uint64 => mapping(address => uint256)) public _bids; // time => (address => bid)
+    mapping (uint64 => uint256) public _totalBids; // time => total bid
 
     constructor(
         int128 _growthRate,
@@ -36,9 +36,9 @@ contract Token is ERC20, ERC2771Context, Ownable {
         uint256 _collateralAmount = msg.value;
         uint64 _curDay = uint64(block.timestamp / (24*3600));
         require(_curDay < _day, "You bade too late");
-        totalBids[_day] += msg.value; // Solidity 0.8 overflow protection
+        _totalBids[_day] += msg.value; // Solidity 0.8 overflow protection
         unchecked { // Overflow checked by the previous statement.
-            bids[_day][_for] += msg.value;
+            _bids[_day][_for] += msg.value;
         }
         payable(0).transfer(msg.value);
         emit Bid(_msgSender(), _for, _day, _collateralAmount);
@@ -46,7 +46,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
 
     function withdrawalAmount(uint64 _day) public view returns(uint256) {
         int128 _ourTokenAmount = growthRate.mul(int128(uint128(_day))).add(shift).exp_2();
-        int128 _share = ABDKMath64x64.divu(bids[_day][_msgSender()], totalBids[_day]);
+        int128 _share = ABDKMath64x64.divu(_bids[_day][_msgSender()], _totalBids[_day]);
         return uint256(int256(_ourTokenAmount.mul(_share)));
     }
 
@@ -55,8 +55,16 @@ contract Token is ERC20, ERC2771Context, Ownable {
         require(block.timestamp >= _day * (24*3600), "Too early to withdraw");
         uint256 _amount = withdrawalAmount(_day);
         _mint(_account, _amount);
-        bids[_day][_account] = 0;
+        _bids[_day][_account] = 0;
         emit Withdraw(_msgSender(), _day, _account, _amount);
+    }
+
+    function bids(uint64 _day, address _user) public returns (uint256) {
+        return _bids[_day][_user];
+    }
+
+    function totalBids(uint64 _day) public returns (uint256) {
+        return _totalBids[_day];
     }
 
     function _msgSender() internal view virtual override(Context, ERC2771Context) returns (address) {
