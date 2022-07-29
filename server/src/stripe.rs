@@ -191,7 +191,7 @@ pub async fn confirm_payment(
     let intent_status = intent.get("status").ok_or(StripeError::new())?.as_str().ok_or(StripeError::new())?;
     info!("Payment intent status: {intent_status}");
     let response = match intent_status {
-        "requires_confirmation" => { // FIXME: More statuses.
+        "requires_confirmation" => {
             let collateral_amount = fiat_to_crypto(&*readonly, fiat_amount).await?;
             let common2 = (**common).clone();
             lock_funds(common2.clone(), collateral_amount).await?;
