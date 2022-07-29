@@ -44,12 +44,14 @@ function PaymentForm(props: { bidDate: Date }) {
     const fiatAmountRef = useRef<HTMLInputElement>(null);
     const payButtonRef = useRef<HTMLButtonElement>(null);
 
+    // TODO: duplicate code
     function handleAccountsChanged(accounts: any) {
         if(accounts[0]) {
             setUserAccount(accounts[0]);
         }
     }
 
+    // TODO: duplicate code
     (window as any).ethereum
         .request({ method: 'eth_accounts' })
         .then(handleAccountsChanged)
