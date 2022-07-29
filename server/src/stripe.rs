@@ -67,9 +67,15 @@ pub async fn create_payment_intent(
         id: String,
         client_secret: String,
     }
-    let data: Data = serde_json::from_slice(res.bytes().await?.as_ref())?;
-    Ok(web::Json(data))
-    // Ok(web::Json("{}"))
+    let reply = res.bytes().await?;
+    let reply = reply.as_ref();
+    if let Ok(data) = serde_json::from_slice(reply) {
+        Ok(web::Json(data)).into()
+    } else {
+        // Return error:
+        let s = String::from_utf8_lossy(reply).to_string();
+        Ok(web::Json(s))
+    }
 }
 
 async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly>) -> Result<(), anyhow::Error> {

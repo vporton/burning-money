@@ -46,7 +46,7 @@ function PaymentForm(props: { bidDate: Date }) {
         (payButtonRef.current as HTMLButtonElement).disabled = true;
 
         const stripePubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text(); // TODO: Fetch it only once.
-        const fiatAmount = fiatAmountRef.current?.value as unknown as number * 100; // FIXME
+        const fiatAmount = Math.floor(0.5 + (fiatAmountRef.current?.value as unknown as number * 100)); // FIXME
         const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`, {
             method: "POST",
             credentials: 'include',
