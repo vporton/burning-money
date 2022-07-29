@@ -13,8 +13,8 @@ contract Token is ERC20, ERC2771Context, Ownable {
 
     int128 public growthRate;
     int128 public shift;
-    mapping (uint64 => mapping(address => uint256)) public _bids; // time => (address => bid)
-    mapping (uint64 => uint256) public _totalBids; // time => total bid
+    mapping (uint64 => mapping(address => uint256)) internal _bids; // time => (address => bid)
+    mapping (uint64 => uint256) internal _totalBids; // time => total bid
 
     constructor(
         int128 _growthRate,
