@@ -56,8 +56,8 @@ export default function Withdraw() {
     // TODO: Withdrawal to other account.
     return (
         <>
-            <p>Withdraw for bid date: <Calendar maxDate={maxDate} onChange={setDate}/></p>
-            <p><button onClick={withdraw}>Withdraw</button> <span>{amount === null ? '' : utils.formatEther(amount)}</span> WT{" "}
+            <p>Withdraw for bid date: <Calendar maxDate={maxDate} defaultValue={maxDate} onChange={setDate}/></p>
+            <p><button onClick={withdraw}>Withdraw</button> <span>{amount === null ? '' : utils.formatEther(amount)}</span> CT{" "}
                 {withdrawn ? "already withdrawn" : "not withdrawn"}
             </p>
         </>

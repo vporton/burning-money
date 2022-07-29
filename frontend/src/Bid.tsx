@@ -62,7 +62,7 @@ export default function Bid() {
                 CardToken in amount equal the share of you bid among all bids on this date
                 multiplied by an exponent of time (for the day of bidding).</p>
             <p>Bid date:</p>
-            <Calendar minDate={minDate} onChange={setDate}/>
+            <Calendar minDate={minDate} onChange={setDate} defaultValue={date}/>
             <br/>
             <Tabs>
                 <TabList>
