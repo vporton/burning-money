@@ -14,5 +14,11 @@ export function EthAddress(props: any) {
         }
     }, [value]);
 
+    useEffect(() => {
+        if(props.value !== undefined) {
+            setValue(props.value);
+        }
+    }, [props.value]);
+
     return <input value={value} onChange={(e: any) => { setValue(e.target.value); props.onChange(e); }} className={valid ? "" : "error"}/>
 }

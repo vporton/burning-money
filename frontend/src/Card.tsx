@@ -44,6 +44,21 @@ function PaymentForm(props: { bidDate: Date }) {
     const fiatAmountRef = useRef<HTMLInputElement>(null);
     const payButtonRef = useRef<HTMLButtonElement>(null);
 
+    function handleAccountsChanged(accounts: any) {
+        if(accounts[0]) {
+            setUserAccount(accounts[0]);
+        }
+    }
+
+    (window as any).ethereum
+        .request({ method: 'eth_accounts' })
+        .then(handleAccountsChanged)
+        .catch((err: any) => {
+            console.error(err);
+        });
+    (window as any).ethereum.on('accountsChanged', handleAccountsChanged);
+
+
     async function createPaymentIntent() {
         const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`, {
             method: "POST",
@@ -95,7 +110,7 @@ function PaymentForm(props: { bidDate: Date }) {
         <>
             <p>
                 <label htmlFor="userAccount">Your crypto account:</label> {" "}
-                <EthAddress id="userAccount" onChange={(e: any) => setUserAccount(e.target.value)} onValid={setEthAddrValid}/> {" "}
+                <EthAddress id="userAccount" value={userAccount} onChange={(e: any) => setUserAccount(e.target.value)} onValid={setEthAddrValid}/> {" "}
                 <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
                 <input type="number" id="fiatAmount" ref={fiatAmountRef}
                     onChange={e => setFiatAmountFromInput(e.target)} disabled={showingPayment}/> {" "}
