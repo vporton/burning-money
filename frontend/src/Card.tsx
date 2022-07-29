@@ -46,11 +46,11 @@ function PaymentForm(props: { bidDate: Date }) {
         (payButtonRef.current as HTMLButtonElement).disabled = true;
 
         const stripePubkey = await (await fetch(backendUrlPrefix + "/stripe-pubkey")).text(); // TODO: Fetch it only once.
-        const fiatAmount = Math.floor(0.5 + (fiatAmountRef.current?.value as unknown as number * 100)); // FIXME
+        const fiatAmount = Math.floor(0.5 + (Number(fiatAmountRef.current?.value) * 100));
         const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`, {
             method: "POST",
             credentials: 'include',
-        })).json(); // FIXME
+        })).json();
         if (res.error) {
             setShowPaymentError(res.error.message);
             setShowPayment(false);
@@ -79,7 +79,7 @@ function PaymentForm(props: { bidDate: Date }) {
                 <input type="text" id="userAccount" onChange={e => setUserAccount(e.target.value)}/> {" "}
                 <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
                 <input type="number" id="fiatAmount" ref={fiatAmountRef}
-                    onChange={e => setFiatAmount(e.target.value as unknown as number)}/> {/* FIXME */}
+                    onChange={e => setFiatAmount(Number(e.target.value))}/>
                 <button ref={payButtonRef} disabled={fiatAmount < 0.5} onClick={e => createPaymentForm()}>Next &gt;&gt;</button>
             </p>
             {showPayment && <Elements stripe={stripePromise} options={options}>

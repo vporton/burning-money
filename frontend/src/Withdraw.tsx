@@ -30,7 +30,7 @@ export default function Withdraw() {
                 setAmount(0);
             } else {
                 token.connect(provider.getSigner(0)).withdrawalAmount(day).then((amount: string) => {
-                    setAmount(amount as unknown as number); // FIXME: correct?
+                    setAmount(Number(amount));
                 });
             }
         });
