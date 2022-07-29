@@ -35,6 +35,7 @@ function PaymentForm(props: { bidDate: Date }) {
     const [stripePromise, setStripePromise] = useState(null as Promise<Stripe | null> | null);
     const [fiatAmount, setFiatAmount] = useState(0);
     const [showPayment, setShowPayment] = useState(false);
+    const [showingPayment, setShowingPayment] = useState(false);
     const [showPaymentError, setShowPaymentError] = useState("");
     const [paymentIntentId, setPaymentIntentId] = useState("");
     const [userAccount, setUserAccount] = useState("");
@@ -42,9 +43,7 @@ function PaymentForm(props: { bidDate: Date }) {
     const payButtonRef = useRef<HTMLButtonElement>(null);
 
     async function doShowPayment() {
-        // FIXME: Do React way:
-        (fiatAmountRef.current as HTMLInputElement).disabled = true;
-        (payButtonRef.current as HTMLButtonElement).disabled = true;
+        setShowingPayment(true);
 
         const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`, {
             method: "POST",
@@ -94,8 +93,9 @@ function PaymentForm(props: { bidDate: Date }) {
                 <input type="text" id="userAccount" onChange={e => setUserAccount(e.target.value)}/> {" "}
                 <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
                 <input type="number" id="fiatAmount" ref={fiatAmountRef}
-                    onChange={e => setFiatAmountFromInput(e.target)}/> {" "}
-                <button ref={payButtonRef} disabled={fiatAmount < 0.5 || !stripePromise} onClick={e => doShowPayment()}>Next &gt;&gt;</button>
+                    onChange={e => setFiatAmountFromInput(e.target)} disabled={showingPayment}/> {" "}
+                <button ref={payButtonRef} disabled={fiatAmount < 0.5 || !stripePromise || showingPayment} onClick={e => doShowPayment()}
+                >Next &gt;&gt;</button>
             </p>
             {showPayment && <Elements stripe={stripePromise} options={options}>
                 <PaymentFormContent paymentIntentId={paymentIntentId} userAccount={userAccount} bidDate={props.bidDate} onPayClicked={onPayClicked}/>
