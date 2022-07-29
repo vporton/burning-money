@@ -38,37 +38,34 @@ function PaymentForm(props: { bidDate: Date }) {
     const [showPaymentError, setShowPaymentError] = useState("");
     const [paymentIntentId, setPaymentIntentId] = useState("");
     const [userAccount, setUserAccount] = useState("");
-    const [show, setShow] = useState(false);
     const fiatAmountRef = useRef<HTMLInputElement>(null);
     const payButtonRef = useRef<HTMLButtonElement>(null);
 
-    useEffect(function() {
-        async function doIt() {
-            if(!show || !stripePromise) {
-                return;
-            }
-            const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`, {
-                method: "POST",
-                credentials: 'include',
-            })).json();
-    
-            if (res.error) {
-                setShowPaymentError(res.error.message);
-                setShowPayment(false);
-            } else {
-                const clientSecret: string = res["client_secret"];
-                const paymentIntentId: string = res["id"];
-    
-                setOptions({
-                    clientSecret,
-                    appearance: {},
-                });
-                setPaymentIntentId(paymentIntentId);
-                setShowPayment(true);
-            }
+    async function doShowPayment() {
+        // FIXME: Do React way:
+        (fiatAmountRef.current as HTMLInputElement).disabled = true;
+        (payButtonRef.current as HTMLButtonElement).disabled = true;
+
+        const res = await (await fetch(`${backendUrlPrefix}/create-payment-intent?fiat_amount=${fiatAmount}`, {
+            method: "POST",
+            credentials: 'include',
+        })).json();
+
+        if (res.error) {
+            setShowPaymentError(res.error.message);
+            setShowPayment(false);
+        } else {
+            const clientSecret: string = res["client_secret"];
+            const paymentIntentId: string = res["id"];
+
+            setOptions({
+                clientSecret,
+                appearance: {},
+            });
+            setPaymentIntentId(paymentIntentId);
+            setShowPayment(true);
         }
-        doIt();
-    }, [stripePromise, show]);
+    }
 
     useEffect(() => {
         fetch(backendUrlPrefix + "/stripe-pubkey")
@@ -81,15 +78,6 @@ function PaymentForm(props: { bidDate: Date }) {
                 setStripePromise(stripePromise_);
             });
     }, []);
-
-    useEffect(function() {
-        if(show) {
-            (fiatAmountRef.current as HTMLInputElement).disabled = true;
-            (payButtonRef.current as HTMLButtonElement).disabled = true;
-
-            ;
-        }
-    }, [show]);
 
     function onPayClicked() {
         setPaymentIntentId("");
@@ -107,7 +95,7 @@ function PaymentForm(props: { bidDate: Date }) {
                 <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
                 <input type="number" id="fiatAmount" ref={fiatAmountRef}
                     onChange={e => setFiatAmountFromInput(e.target)}/> {" "}
-                <button ref={payButtonRef} disabled={fiatAmount < 0.5} onClick={e => setShow(true)}>Next &gt;&gt;</button>
+                <button ref={payButtonRef} disabled={fiatAmount < 0.5 || !stripePromise} onClick={e => doShowPayment()}>Next &gt;&gt;</button>
             </p>
             {showPayment && <Elements stripe={stripePromise} options={options}>
                 <PaymentFormContent paymentIntentId={paymentIntentId} userAccount={userAccount} bidDate={props.bidDate} onPayClicked={onPayClicked}/>
