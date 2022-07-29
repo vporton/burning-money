@@ -59,11 +59,11 @@ contract Token is ERC20, ERC2771Context, Ownable {
         emit Withdraw(_msgSender(), _day, _account, _amount);
     }
 
-    function bids(uint64 _day, address _user) public returns (uint256) {
+    function bids(uint64 _day, address _user) public view returns (uint256) {
         return _bids[_day][_user];
     }
 
-    function totalBids(uint64 _day) public returns (uint256) {
+    function totalBids(uint64 _day) public view returns (uint256) {
         return _totalBids[_day];
     }
 
