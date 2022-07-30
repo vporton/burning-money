@@ -53,7 +53,7 @@ contract Token is ERC20, ERC2771Context, Ownable {
     // Some time in the future overflow will happen.
     function withdraw(uint64 _day, address _account) public {
         require(block.timestamp >= _day * (24*3600), "Too early to withdraw");
-        uint256 _amount = withdrawalAmount(_day);
+        uint256 _amount = withdrawalAmount(_day, _msgSender());
         _mint(_account, _amount);
         _bids[_day][_account] = 0;
         emit Withdraw(_msgSender(), _day, _account, _amount);
