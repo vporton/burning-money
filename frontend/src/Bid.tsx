@@ -19,6 +19,10 @@ const erc20Abi = ERC20.abi;
 export default function Bid() {
     const minDate = new Date();
     minDate.setDate(minDate.getDate() + 1);
+    minDate.setHours(0);
+    minDate.setMinutes(0);
+    minDate.setSeconds(0);
+    minDate.setMilliseconds(0);
     const [date, setDate] = useState(minDate);
     const [bidAmount, setBidAmount] = useState('');
     const [bidButtonActive, setBidButtonActive] = useState(false);
@@ -31,6 +35,10 @@ export default function Bid() {
         setCCBidButtonActive(/^[0-9]+(\.[0-9]+)?/.test(bidCCAmount) && date !== null);
     }, [date, bidCCAmount])
 
+    useEffect(() => {
+        console.log(`Switching to ${date}`);
+    }, [date]);
+
     async function bid() {
         await (window as any).ethereum.enable();
         const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
@@ -41,6 +49,7 @@ export default function Bid() {
         }
         const addrs = (deployed as any)[CHAINS[chainId]];
         const token = new ethers.Contract(addrs.Token, tokenAbi);
+        console.log(`Bidding ${utils.parseEther(bidAmount)} on ${date}`);
         const day = Math.floor(date.getTime() / 1000 / (24*3600));
         // const estimation = await token.estimateGas.bidOn(day, utils.parseEther(bidAmount)); // TODO
         await token.connect(provider.getSigner(0)).bidOn(day, await provider.getSigner(0).getAddress(), {
@@ -48,9 +57,9 @@ export default function Bid() {
             // gasLimit: String(estimation.mul(BN.from(1.3))), // TODO
             gasLimit: '200000',
         });
-        setInterval(async () => {
-            console.log('BID:', day, await token.connect(provider.getSigner(0)).totalBids(BN.from(day)));
-        }, 1000);
+        // setInterval(async () => {
+        //     console.log('BID:', day, await token.connect(provider.getSigner(0)).totalBids(BN.from(day)));
+        // }, 1000);
     }
 
     async function ccBid() {

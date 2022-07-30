@@ -12,9 +12,13 @@ const tokenAbi = Token.abi;
 
 export default function Withdraw() {
     const maxDate = new Date();
+    maxDate.setHours(0);
+    maxDate.setMinutes(0);
+    maxDate.setSeconds(0);
+    maxDate.setMilliseconds(0);
     // maxDate.setDate(maxDate.getDate() - 1);
     const [date, setDate] = useState(maxDate);
-    const [amount, setAmount] = useState<number>(0);
+    const [amount, setAmount] = useState<string>('0');
     const [withdrawn, setWithdrawn] = useState(false);
     const [userAccount, setUserAccount] = useState<string | null>();
 
@@ -40,16 +44,19 @@ export default function Withdraw() {
                 const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
                 const { chainId } = await provider.getNetwork();
                 const addrs = (deployed as any)[CHAINS[chainId]];
+                console.log('DATE', date)
                 const day = Math.floor(date.getTime() / 1000 / (24*3600));
+                console.log('DAY', day)
                 const token = new ethers.Contract(addrs.Token, tokenAbi, provider.getSigner(0));
                 const totalBid = await token.totalBids(BN.from(day));
-                console.log('BID2:', day, totalBid) // TODO: Remove.
                 if(totalBid.eq(BN.from(0))) {
-                    setAmount(0);
+                    setAmount('0');
                 } else {
+                    console.log('userAccount', userAccount)
                     token.withdrawalAmount(BN.from(day), userAccount)
                         .then((amount: string) => {
-                            setAmount(Number(amount));
+                            // setAmount(utils.formatEther(amount));
+                            setAmount(String(amount));
                         });
                 }
             }
@@ -80,7 +87,7 @@ export default function Withdraw() {
             <p>Withdraw for bid date:</p>
             {/*<Calendar maxDate={maxDate} defaultValue={maxDate} onChange={setDate}/>*/}
             <Calendar defaultValue={maxDate} onChange={setDate}/>
-            <p><button onClick={withdraw}>Withdraw</button> <span>{amount === 0 ? '' : utils.formatEther(amount)}</span> CT{" "}
+            <p><button onClick={withdraw}>Withdraw</button> <span>{amount === '0' ? '' : utils.formatEther(amount)}</span> CT{" "}
                 {withdrawn ? "already withdrawn" : "not withdrawn"}
             </p>
         </>
