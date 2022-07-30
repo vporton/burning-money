@@ -5,7 +5,6 @@ use std::sync::Arc;
 use actix_identity::Identity;
 use actix_web::{get, post, Responder, web, HttpResponse};
 use actix_web::http::header::CONTENT_TYPE;
-use chrono::{DateTime, NaiveDateTime, Utc};
 use log::{debug, info};
 // use stripe::{CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreatePrice, CreateProduct, Currency, IdOrCreate, Price, Product};
 use serde::{Deserialize, Serialize};
@@ -108,7 +107,7 @@ pub async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), a
 }
 
 // It returns the Ethereum transaction (probably, yet not confirmed).
-async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bid_date: DateTime<Utc>, crypto_amount: i64)
+async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bid_day: i64, crypto_amount: i64)
     -> Result<H256, anyhow::Error>
 {
     let token =
@@ -123,7 +122,7 @@ async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bi
         )?;
     let tx = token.signed_call(
         "bidOn",
-        (U256::from(bid_date.timestamp()), crypto_account),
+        (bid_day, crypto_account),
         Options::with(|opt| {
             opt.value = Some(U256::from(crypto_amount));
             opt.gas = Some(500000.into()); // TODO
@@ -138,7 +137,7 @@ async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bi
 pub struct ConfirmPaymentForm {
     payment_intent_id: String,
     crypto_account: String,
-    bid_date: String,
+    bid_day: i64,
 }
 
 async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Result<i64, anyhow::Error> {
@@ -205,14 +204,14 @@ pub async fn confirm_payment(
             let id: i64 = { // restrict lock duration
                 let conn = &mut common.lock().await.db;
                 conn.query_one(
-                    "INSERT INTO txs (payment_intent_id, user_id, eth_account, usd_amount, crypto_amount, bid_date) VALUES($1, $2, $3, $4, $5, $6) RETURNING id",
+                    "INSERT INTO txs (payment_intent_id, user_id, eth_account, usd_amount, crypto_amount, bid_day) VALUES($1, $2, $3, $4, $5, $6) RETURNING id",
                     &[
                         &form.payment_intent_id,
                         &ident.id()?.parse::<i64>()?,
                         &<Address>::from_str(&form.crypto_account)?.as_bytes(), // TODO: better error message (not error 500)
                         &fiat_amount,
                         &collateral_amount,
-                        &DateTime::parse_from_rfc3339(form.bid_date.as_str())?.timestamp(),
+                        &form.bid_day,
                     ],
                 ).await?.get(0)
             };
@@ -266,13 +265,11 @@ pub async fn confirm_payment(
 }
 
 pub async fn exchange_item(item: crate::models::Tx, common: Arc<Mutex<Common>>, readonly: &Arc<CommonReadonly>) -> Result<(), anyhow::Error> {
-    let naive = NaiveDateTime::from_timestamp(item.bid_date, 0);
-
     // First submit to blockchain to avoid double submissions.
     let tx = do_exchange(
         &readonly,
         (<&[u8; 20]>::try_from(item.eth_account.as_slice())?).into(),
-        DateTime::from_utc(naive, Utc),
+        item.bid_day,
         item.crypto_amount,
     ).await?;
     { // restrict lock duration

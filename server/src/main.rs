@@ -170,7 +170,7 @@ async fn process_current(
                     eth_account: tx.get("eth_account"),
                     usd_amount: tx.get("usd_amount"),
                     crypto_amount: tx.get("crypto_amount"),
-                    bid_date: tx.get("bid_date"),
+                    bid_day: tx.get("bid_day"),
                     status: tx.get("status"),
                     tx_id: tx.get("tx_id"),
                 };
