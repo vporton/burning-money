@@ -120,6 +120,7 @@ async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bi
             // r#"[{"type":"function","name":"bidOn","inputs":[{"name":"_day","type":"uint64"},{"name":"_collateralAmount","type":"uint256"},{"name":"_for","type":"address"}],"outputs":[],"stateMutability":"payable"}]"#
             //     .as_bytes()
         )?;
+    info!("Bidding {} tokens on {} day for user {}", crypto_amount, bid_day, crypto_account);
     let tx = token.signed_call(
         "bidOn",
         (bid_day as u64, crypto_account),
