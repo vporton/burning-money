@@ -48,6 +48,9 @@ export default function Bid() {
             // gasLimit: String(estimation.mul(BN.from(1.3))), // TODO
             gasLimit: '200000',
         });
+        setInterval(async () => {
+            console.log('BID:', day, await token.connect(provider.getSigner(0)).totalBids(BN.from(day)));
+        }, 1000);
     }
 
     async function ccBid() {

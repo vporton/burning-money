@@ -44,9 +44,9 @@ contract Token is ERC20, ERC2771Context, Ownable {
         emit Bid(_msgSender(), _for, _day, _collateralAmount);
     }
 
-    function withdrawalAmount(uint64 _day) public view returns(uint256) {
+    function withdrawalAmount(uint64 _day, address _user) public view returns(uint256) {
         int128 _ourTokenAmount = growthRate.mul(int128(uint128(_day))).add(shift).exp_2();
-        int128 _share = ABDKMath64x64.divu(_bids[_day][_msgSender()], _totalBids[_day]);
+        int128 _share = ABDKMath64x64.divu(_bids[_day][_user], _totalBids[_day]);
         return uint256(int256(_ourTokenAmount.mul(_share)));
     }
 

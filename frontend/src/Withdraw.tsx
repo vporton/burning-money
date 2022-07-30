@@ -43,10 +43,11 @@ export default function Withdraw() {
                 const day = Math.floor(date.getTime() / 1000 / (24*3600));
                 const token = new ethers.Contract(addrs.Token, tokenAbi, provider.getSigner(0));
                 const totalBid = await token.totalBids(BN.from(day));
+                console.log('BID2:', day, totalBid) // TODO: Remove.
                 if(totalBid.eq(BN.from(0))) {
                     setAmount(0);
                 } else {
-                    token.withdrawalAmount(day, userAccount)
+                    token.withdrawalAmount(BN.from(day), userAccount)
                         .then((amount: string) => {
                             setAmount(Number(amount));
                         });
