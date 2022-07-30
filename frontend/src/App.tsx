@@ -1,4 +1,3 @@
-import 'babel-polyfill';
 import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
 import Bid from './Bid';
 import Card from './Card';
