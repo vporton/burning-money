@@ -122,7 +122,7 @@ async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bi
         )?;
     let tx = token.signed_call(
         "bidOn",
-        (bid_day, crypto_account),
+        (bid_day as u64, crypto_account),
         Options::with(|opt| {
             opt.value = Some(U256::from(crypto_amount));
             opt.gas = Some(500000.into()); // TODO
@@ -204,7 +204,7 @@ pub async fn confirm_payment(
             let id: i64 = { // restrict lock duration
                 let conn = &mut common.lock().await.db;
                 conn.query_one(
-                    "INSERT INTO txs (payment_intent_id, user_id, eth_account, usd_amount, crypto_amount, bid_day) VALUES($1, $2, $3, $4, $5, $6) RETURNING id",
+                    "INSERT INTO txs (payment_intent_id, user_id, eth_account, usd_amount, crypto_amount, bid_date) VALUES($1, $2, $3, $4, $5, $6) RETURNING id",
                     &[
                         &form.payment_intent_id,
                         &ident.id()?.parse::<i64>()?,
@@ -269,7 +269,7 @@ pub async fn exchange_item(item: crate::models::Tx, common: Arc<Mutex<Common>>, 
     let tx = do_exchange(
         &readonly,
         (<&[u8; 20]>::try_from(item.eth_account.as_slice())?).into(),
-        item.bid_day,
+        item.bid_date,
         item.crypto_amount,
     ).await?;
     { // restrict lock duration

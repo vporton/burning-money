@@ -1,7 +1,7 @@
 // import { ethers } from 'hardhat';
 import { ethers } from 'ethers';
-import Calendar from 'react-calendar'
-import 'react-calendar/dist/Calendar.css';
+// import Calendar from 'react-calendar'
+// import 'react-calendar/dist/Calendar.css';
 import deployed from "./deployed-addresses.json";
 import { CHAINS } from './data';
 import Token from "./Token.json";
@@ -12,32 +12,33 @@ import 'react-tabs/style/react-tabs.css';
 import { backendUrlPrefix } from './config';
 import Card from './Card';
 import React from 'react';
+import { Interval24Hours } from './components/Interval24Hours';
 const { utils, BigNumber: BN } = ethers;
 const tokenAbi = Token.abi;
 const erc20Abi = ERC20.abi;
 
 export default function Bid() {
-    const minDate = new Date();
-    minDate.setDate(minDate.getDate() + 1);
-    minDate.setHours(0);
-    minDate.setMinutes(0);
-    minDate.setSeconds(0);
-    minDate.setMilliseconds(0);
-    const [date, setDate] = useState(minDate);
+    // const minDate = new Date();
+    // minDate.setUTCDate(minDate.getUTCDate() + 1);
+    // minDate.setUTCHours(0);
+    // minDate.setUTCMinutes(0);
+    // minDate.setUTCSeconds(0);
+    // minDate.setUTCMilliseconds(0);
+    const [day, setDay] = useState(Math.floor(new Date().getTime() / (24*3600*1000)));
     const [bidAmount, setBidAmount] = useState('');
     const [bidButtonActive, setBidButtonActive] = useState(false);
     const [bidCCAmount, setCCAmount] = useState('');
     const [ccBidButtonActive, setCCBidButtonActive] = useState(false);
     useEffect(() => {
-        setBidButtonActive(/^[0-9]+(\.[0-9]+)?/.test(bidAmount) && date !== null);
-    }, [date, bidAmount])
+        setBidButtonActive(/^[0-9]+(\.[0-9]+)?/.test(bidAmount) && day !== null);
+    }, [day, bidAmount])
     useEffect(() => {
-        setCCBidButtonActive(/^[0-9]+(\.[0-9]+)?/.test(bidCCAmount) && date !== null);
-    }, [date, bidCCAmount])
+        setCCBidButtonActive(/^[0-9]+(\.[0-9]+)?/.test(bidCCAmount) && day !== null);
+    }, [day, bidCCAmount])
 
     useEffect(() => {
-        console.log(`Switching to ${date}`);
-    }, [date]);
+        console.log(`Switching to ${day}`);
+    }, [day]);
 
     async function bid() {
         await (window as any).ethereum.enable();
@@ -49,8 +50,7 @@ export default function Bid() {
         }
         const addrs = (deployed as any)[CHAINS[chainId]];
         const token = new ethers.Contract(addrs.Token, tokenAbi);
-        console.log(`Bidding ${utils.parseEther(bidAmount)} on ${date}`);
-        const day = Math.floor(date.getTime() / 1000 / (24*3600));
+        console.log(`Bidding ${utils.parseEther(bidAmount)} on ${day}`);
         // const estimation = await token.estimateGas.bidOn(day, utils.parseEther(bidAmount)); // TODO
         await token.connect(provider.getSigner(0)).bidOn(day, await provider.getSigner(0).getAddress(), {
             value: utils.parseEther(bidAmount),
@@ -74,7 +74,7 @@ export default function Bid() {
                 CardToken in amount equal the share of you bid among all bids on this date
                 multiplied by an exponent of time (for the day of bidding).</p>
             <p>Bid date:</p>
-            <Calendar minDate={minDate} onChange={setDate} defaultValue={date}/>
+            <Interval24Hours onChange={setDay}/>
             <br/>
             <Tabs>
                 <TabList>
@@ -87,7 +87,7 @@ export default function Bid() {
                     <p><button onClick={bid} disabled={!bidButtonActive}>Bid</button></p>
                 </TabPanel>
                 <TabPanel>
-                    <Card bidDate={date}/>
+                    <Card bidDay={day}/>
                 </TabPanel>
             </Tabs>
         </>

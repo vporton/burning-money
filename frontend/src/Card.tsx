@@ -6,7 +6,7 @@ import React from 'react';
 import { NavLink } from "react-router-dom";
 import { EthAddress } from "./components/EthAddress";
 
-export default function Card(props: { bidDate: Date }) {
+export default function Card(props: { bidDay: number }) {
     const [user, setUser] = useState<string | null>(null);
     fetch(backendUrlPrefix + "/identity", {credentials: 'include'})
         .then(u => u.json())
@@ -25,13 +25,13 @@ export default function Card(props: { bidDate: Date }) {
         {user === null ? <><NavLink to={'/login'}>Login</NavLink> <NavLink to={'/register'}>Register</NavLink></> : <a href='#' onClick={logout}>Logout</a>}
         <p>You mine CardToken by using a credit card or a bank account (unlike Bitcoin that is mined by costly equipment).</p>
         <p>To mine an amount of CardToken corresponding to a certain amount of money, pay any amount of money.</p>
-        {user !== null ? <PaymentForm bidDate={props.bidDate}/> : ""}
+        {user !== null ? <PaymentForm bidDay={props.bidDay}/> : ""}
     </>
 }
 
 // https://stripe.com/docs/payments/finalize-payments-on-the-server
 
-function PaymentForm(props: { bidDate: Date }) {
+function PaymentForm(props: { bidDay: number }) {
     const [options, setOptions] = useState(null as unknown as object);
     const [stripePromise, setStripePromise] = useState(null as Promise<Stripe | null> | null);
     const [fiatAmount, setFiatAmount] = useState(0);
@@ -126,7 +126,7 @@ function PaymentForm(props: { bidDate: Date }) {
                     : ""}
             </p>
             {showPayment && <Elements stripe={stripePromise} options={options}>
-                <PaymentFormContent paymentIntentId={paymentIntentId} userAccount={userAccount} bidDate={props.bidDate} onPayClicked={onPayClicked}
+                <PaymentFormContent paymentIntentId={paymentIntentId} userAccount={userAccount} bidDay={props.bidDay} onPayClicked={onPayClicked}
                 onPaid={() => {setShowingPayment(false); setShowPayment(false);}}/>
             </Elements>}
             {!showPayment && <p>{showPaymentError}</p>}
@@ -172,7 +172,7 @@ function PaymentFormContent(props: any) { // TODO: `any`
                 let data = [];
                 data.push('payment_intent_id=' + encodeURIComponent(result.paymentIntent.id));
                 data.push('crypto_account=' + encodeURIComponent(props.userAccount));
-                data.push('bid_date=' + encodeURIComponent(props.bidDate.toISOString()));
+                data.push('bid_day=' + encodeURIComponent(props.bidDay));
                 fetch(backendUrlPrefix + '/confirm-payment', {
                     method: 'POST',
                     credentials: 'include',

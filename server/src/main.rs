@@ -170,7 +170,7 @@ async fn process_current(
                     eth_account: tx.get("eth_account"),
                     usd_amount: tx.get("usd_amount"),
                     crypto_amount: tx.get("crypto_amount"),
-                    bid_day: tx.get("bid_day"),
+                    bid_date: tx.get("bid_date"),
                     status: tx.get("status"),
                     tx_id: tx.get("tx_id"),
                 };
@@ -185,7 +185,7 @@ async fn process_current(
         let common = &common3;
         loop {
             if let Err(err) = my_loop().await {
-                error!("Error processing transactions: {}", err);
+                error!("Error processing transactions: {}\n{}", err, err.backtrace());
             }
             let rc = { // not to lock for too long
                 let guard = common.lock().await;

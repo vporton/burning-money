@@ -6,7 +6,7 @@ pub struct Tx {
     pub eth_account: Vec<u8>,
     pub usd_amount: i64,
     pub crypto_amount: i64,
-    pub bid_day: i64,
+    pub bid_date: i64,
     pub status: TxsStatusType,
     pub tx_id: Option<Vec<u8>>,
 }

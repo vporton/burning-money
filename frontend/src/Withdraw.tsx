@@ -7,17 +7,18 @@ import deployed from "./deployed-addresses.json";
 import { CHAINS } from './data';
 import Token from "./Token.json";
 import { useEffect, useState } from 'react';
+import { Interval24Hours } from "./components/Interval24Hours";
 const { utils, BigNumber: BN } = ethers;
 const tokenAbi = Token.abi;
 
 export default function Withdraw() {
     const maxDate = new Date();
-    maxDate.setHours(0);
-    maxDate.setMinutes(0);
-    maxDate.setSeconds(0);
-    maxDate.setMilliseconds(0);
-    // maxDate.setDate(maxDate.getDate() - 1);
-    const [date, setDate] = useState(maxDate);
+    maxDate.setUTCHours(0);
+    maxDate.setUTCMinutes(0);
+    maxDate.setUTCSeconds(0);
+    maxDate.setUTCMilliseconds(0);
+    // maxDate.setUTCDate(maxDate.getUTCDate() - 1);
+    const [day, setDay] = useState(0); // TODO: initial value
     const [amount, setAmount] = useState<string>('0');
     const [withdrawn, setWithdrawn] = useState(false);
     const [userAccount, setUserAccount] = useState<string | null>();
@@ -44,9 +45,6 @@ export default function Withdraw() {
                 const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
                 const { chainId } = await provider.getNetwork();
                 const addrs = (deployed as any)[CHAINS[chainId]];
-                console.log('DATE', date)
-                const day = Math.floor(date.getTime() / 1000 / (24*3600));
-                console.log('DAY', day)
                 const token = new ethers.Contract(addrs.Token, tokenAbi, provider.getSigner(0));
                 const totalBid = await token.totalBids(BN.from(day));
                 if(totalBid.eq(BN.from(0))) {
@@ -62,7 +60,7 @@ export default function Withdraw() {
             }
         }
         doIt()
-    }, [date, userAccount]);
+    }, [day, userAccount]);
 
     async function withdraw() {
         // TODO: Duplicate code
@@ -75,7 +73,6 @@ export default function Withdraw() {
             return;
         }
         const token = new ethers.Contract(addrs.Token, tokenAbi);
-        const day = Math.floor(Number(date) / (24*3600))
         await token.connect(provider.getSigner(0)).withdraw(day, userAccount, {
             gasLimit: '200000',
         });
@@ -84,9 +81,8 @@ export default function Withdraw() {
     // TODO: Withdrawal to other account.
     return (
         <>
-            <p>Withdraw for bid date:</p>
-            {/*<Calendar maxDate={maxDate} defaultValue={maxDate} onChange={setDate}/>*/}
-            <Calendar defaultValue={maxDate} onChange={setDate}/>
+            <p>Withdraw for bid interval:</p>
+            <Interval24Hours onChange={setDay}/>
             <p><button onClick={withdraw}>Withdraw</button> <span>{amount === '0' ? '' : utils.formatEther(amount)}</span> CT{" "}
                 {withdrawn ? "already withdrawn" : "not withdrawn"}
             </p>
