@@ -13,11 +13,13 @@ our_tax = 0.2
 mother_hash = "Yeimawi2chohdeis1chiGhoochap?ooD8aeghee2tie(diN6ieB&aeng8eiRei_z"  # 64 bytes
 ethereum_key_file = "ethereum.priv"
 #ethereum_password = "ooP2Aigodee8OoM3"
+sumsub_access_token = "sbx:xLv9oqLeffcVVJUL8Dg7ppu7.EHSDZc8sU8AwKJYcPUUJiLEBCrwvqiZ2"
+sumsub_secret_key = "aYQaN5MqSGlGv41aG9F5T2d7ujkkAXsV"
 
 [database]
 conn_string = "host=localhost user=rserver password=123"
 
 [stripe]
 # The following are testing credentials:
-public_key = "pk_test_51KQyqyJ2iRZ5a1XlawDeIDEBvPT88i81gRr1wy6b4j9gfNqkT5yhDZstUpIdjmovrnmD4nKkoQ5fmzhJhzZZvEZH00updo0A3n"
-secret_key = "sk_test_51KQyqyJ2iRZ5a1XloMYifZLTVyNYr2BueN0YZEILU2CXHEwozbiDZRVXZVCjXZo8VqC91HEGb5ccnuJIz9XxSGiG00mjhUMsDi"
+public_key = "pk_test_51KQyqyJ2iRZ5a1Xl5LlJ3XqT1de8RhE3RmG6ZuqzzZmhkCkNYutRP1dYcQIFT2UZQhDtBXdaBlAZ3qsmTGeXLfHl00F151aOGY"
+secret_key = "sk_test_51KQyqyJ2iRZ5a1XlGUVhM6HBSqgGz6OocandCoytKb6UOmTzeWJwRcqszm9rKjJ8bza7B1ryuwLr1jh4Nb3ApzA400joihkIPf"
