@@ -41,6 +41,7 @@ export default function Withdraw() {
     useEffect(() => {
         async function doIt() {
             // TODO: Duplicate code
+            await (window as any).ethereum.enable();
             if(userAccount !== null) {
                 const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
                 const { chainId } = await provider.getNetwork();
@@ -64,7 +65,6 @@ export default function Withdraw() {
 
     async function withdraw() {
         // TODO: Duplicate code
-        await (window as any).ethereum.enable();
         const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
         const { chainId } = await provider.getNetwork();
         const addrs = (deployed as any)[CHAINS[chainId]];
