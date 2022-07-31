@@ -377,7 +377,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let (program_finished_tx, program_finished_rx) = async_channel::bounded(1);
     let balance = readonly.web3.eth().balance(
         SecretKeyRef::new(&readonly.ethereum_key).address(), None).await?;
-    info!("Ethereum balance: {balance}");
+    info!("Ethereum {} balance: {balance}", SecretKeyRef::new(&readonly.ethereum_key).address());
     let common = Arc::new(Mutex::new(Common {
         db: client,
         transactions_awaited: HashSet::new(),
