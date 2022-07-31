@@ -12,14 +12,15 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
     const Token = await ethers.getContractFactory("Token");
     const day = 19205;
     // The formula is 2^(-bx+c)
-    const b = 1/(2 * 24*3600*365.25); // 2 times per 2 years
+    const b = 1/(2 * 365.25); // 2 times per 2 years
     const c = Math.log2(2**63) + b * day;
+    console.log(b, c)
     console.log(b * 2**64, c * 2**64)
     const token = await myDeploy(
         Token, network, deployer, "Token",
         [
-            BN.from('292271023045'),
-            BN.from('1162150489708699300000'),
+            BN.from('25252216391115060'),
+            BN.from('1647113692435066400000'),
             forwarder,
             "CardToken", "CT",
         ],
