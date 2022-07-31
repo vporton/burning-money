@@ -3,7 +3,12 @@ import { useEffect, useState } from "react";
 import validators from "./validators";
 
 // TODO: ENS
-export function EthAddress(props: any) {
+export function EthAddress(props: {
+    onValid?: (valid: boolean) => void,
+    onChange?: (value: string) => void,
+    value?: string,
+    defaultValue?: string
+}) {
     const [value, setValue] = useState(props.defaultValue || "");
     const [valid, setValid] = useState(false);
 
@@ -21,5 +26,6 @@ export function EthAddress(props: any) {
         }
     }, [props.value]);
 
-    return <input value={value} onChange={(e: any) => { setValue(e.target.value); props.onChange(e); }} className={valid ? "" : "error"}/>
+    return <input type="text" defaultValue={props.defaultValue} className={valid ? "" : "error"}
+        onChange={(e: any) => { setValue(e.target.value); if(props.onChange) { props.onChange(e); }}} />
 }

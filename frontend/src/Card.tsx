@@ -112,7 +112,7 @@ function PaymentForm(props: { bidDay: number }) {
         <>
             <p>
                 <label htmlFor="userAccount">Your crypto account:</label> {" "}
-                <EthAddress id="userAccount" value={userAccount} onChange={(e: any) => setUserAccount(e.target.value)} onValid={setEthAddrValid}/> {" "}
+                <EthAddress defaultValue={userAccount} onChange={(e: any) => setUserAccount(e.target.value)} onValid={setEthAddrValid}/> {" "}
                 <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
                 <input type="number" id="fiatAmount" ref={fiatAmountRef}
                     onChange={e => setFiatAmountFromInput(e.target)} disabled={showingPayment}/> {" "}
