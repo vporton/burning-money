@@ -1,2 +1,17 @@
-.mainNav .active { color: green; }
-.mainNav .inactive { color: blue; }
+.mainNav .active {
+  border: 4px inset gray;
+  padding: 5px;
+  margin: 1px;
+}
+
+.mainNav .inactive {
+  border: 4px outset gray;
+  padding: 5px;
+  margin: 1px;
+}
+
+.mainNav * {
+  background: gray;
+  text-decoration: none;
+  color: white;
+}

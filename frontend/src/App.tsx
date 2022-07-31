@@ -21,7 +21,7 @@ export function App() {
             <h1>Bid CardToken</h1>
             <BrowserRouter>
                 <nav className="mainNav">
-                    <MyNavLink to={`/bid`}>Bid</MyNavLink> |{" "}
+                    <MyNavLink to={`/bid`}>Bid</MyNavLink>
                     <MyNavLink to={`/withdraw`}>Withdraw earninigs</MyNavLink>
                 </nav>
                 <Routes>
