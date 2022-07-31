@@ -69,12 +69,12 @@ export default function Bid() {
 
     return (
         <>
-            <p>You mine CardToken by paying in Polkatod Glimmer.</p>
+            <p>You mine CardToken by paying in Polkatod Glimmer or by a credit/debit card.</p>
             <p>You choose a future date for your bid. On or after this date you can withdraw
                 CardToken in amount equal the share of you bid among all bids on this date
                 multiplied by an exponent of time (for the day of bidding).</p>
-            <p>Bid date:</p>
-            <Interval24Hours onChange={setDay}/>
+            <p style={{color: 'red'}}>If your bid happens in past time, it won't happen, and our current policy is no refunds!</p>
+            <p>Bid on: <Interval24Hours onChange={setDay}/></p>
             <br/>
             <Tabs>
                 <TabList>
