@@ -85,7 +85,7 @@ export default function Withdraw() {
     return (
         <>
             <p>Withdraw for bid interval:</p>
-            <Interval24Hours onChange={setDay}/>
+            <Interval24Hours onChange={setDay}/> {amount}
             <p><button onClick={withdraw}>Withdraw</button> <span>{amount === '0' ? '' : utils.formatEther(amount)}</span> CT{" "}
                 {withdrawn ? "already withdrawn" : "not withdrawn"}
             </p>
