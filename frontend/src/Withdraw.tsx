@@ -12,6 +12,9 @@ const { utils, BigNumber: BN } = ethers;
 const tokenAbi = Token.abi;
 
 export default function Withdraw() {
+    const growthRate = 292271023045 / 2**64
+    const shift = 1654532062801621000000 / 2**64
+
     const maxDate = new Date();
     maxDate.setUTCHours(0);
     maxDate.setUTCMinutes(0);

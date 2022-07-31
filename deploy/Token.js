@@ -10,11 +10,16 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
     const addresses = JSON.parse(fs.readFileSync('addresses.json'))[network.name];
     const forwarder = getAddress(network.name, "BiconomyForwarder");
     const Token = await ethers.getContractFactory("Token");
+    const day = 19205;
+    // The formula is 2^(-bx+c)
+    const b = 1/(2 * 24*3600*365.25); // 2 times per 2 years
+    const c = Math.log2(1e9 * 1e18) + b * day;
+    console.log(b, c)
     const token = await myDeploy(
         Token, network, deployer, "Token",
         [
-            Math.floor(BN.from(1).div(BN.from(2 * 24*3600*365.25)).mul(BN.from(2).pow(BN.from(64)))), // 2 times per 2 years
-            '0', // shift
+            BN.from('292271023045'),
+            BN.from('1654532062801621000000'),
             forwarder,
             "CardToken", "CT",
         ],
