@@ -30,16 +30,18 @@ use tokio_postgres::NoTls;
 use web3::api::Namespace;
 use web3::api::EthFilter;
 use crate::errors::{CannotLoadDataError, MyError, StripeError};
+use crate::kyc_sumsub::sumsub_generate_access_token;
 use crate::models::Tx;
 use crate::pages::{about_us, not_found};
 use crate::stripe::{confirm_payment, create_payment_intent, exchange_item, lock_funds, stripe_public_key};
-use crate::user::{user_identity, user_login, user_logout, user_register};
+use crate::user::{user_email, user_identity, user_login, user_logout, user_register};
 
 mod pages;
 mod errors;
 mod stripe;
 mod user;
 mod async_db;
+mod kyc_sumsub;
 mod sql_types;
 mod models;
 
@@ -67,6 +69,8 @@ pub struct Config {
 pub struct SecretsConfig {
     mother_hash: String,
     ethereum_key_file: String,
+    sumsub_access_token: String,
+    sumsub_secret_key: String,
 }
 
 #[derive(Clone, Deserialize)]
@@ -438,6 +442,7 @@ async fn main() -> Result<(), anyhow::Error> {
             .app_data(Data::new(common.clone()))
             .app_data(Data::new(readonly.clone()))
             .service(user_identity)
+            .service(user_email)
             .service(user_register)
             .service(user_login)
             .service(user_logout)
@@ -445,6 +450,7 @@ async fn main() -> Result<(), anyhow::Error> {
             .service(stripe_public_key)
             .service(create_payment_intent)
             .service(confirm_payment)
+            .service(sumsub_generate_access_token)
             .service(
                 actix_files::Files::new("/media", "media").use_last_modified(true),
             )

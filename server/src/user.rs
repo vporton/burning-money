@@ -24,6 +24,27 @@ pub async fn user_identity(user: Option<Identity>) -> impl Responder {
     web::Json(result)
 }
 
+#[get("/email")]
+pub async fn user_email(user: Option<Identity>, common: web::Data<Arc<Mutex<Common>>>) -> Result<impl Responder, MyError> {
+    #[derive(Serialize)]
+    struct MyEmail {
+        email: Option<String>,
+    }
+    let result = if let Some(user) = user {
+        let email = common.lock().await.db
+            .query_one("SELECT email FROM users WHERE id=$1", &[&user.id().unwrap().parse::<i64>()?]).await? // FIXME: query_opt
+            .get(0);
+        MyEmail {
+            email: Some(email),
+        }
+    } else {
+        MyEmail {
+            email: None
+        }
+    };
+    Ok(web::Json(result))
+}
+
 #[derive(Clone, Deserialize)]
 pub struct User {
     // id: Option<u64>,

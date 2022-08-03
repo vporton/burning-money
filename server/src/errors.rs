@@ -97,6 +97,7 @@ pub enum MyErrorBase {
     Stripe(StripeError),
     CannotLoadData(CannotLoadDataError),
     KYC(KYCError),
+    UrlParse(url::ParseError),
 }
 
 #[derive(Serialize)]
@@ -164,6 +165,7 @@ impl Display for MyErrorBase {
             Self::Stripe(_) => write!(f, "Stripe API failed."),
             Self::CannotLoadData(_) => write!(f, "Cannot load data."),
             Self::KYC(_) => write!(f, "KYC didn't pass."),
+            Self::UrlParse(err) => write!(f, "URL parse error: {}", err),
         }
     }
 }
@@ -365,6 +367,12 @@ impl From<KYCError> for MyErrorBase {
     }
 }
 
+impl From<url::ParseError> for MyErrorBase {
+    fn from(value: url::ParseError) -> Self {
+        Self::UrlParse(value)
+    }
+}
+
 ////////////////////////////////////
 
 impl From<InterruptError> for MyError {
@@ -523,3 +531,8 @@ impl From<KYCError> for MyError {
     }
 }
 
+impl From<url::ParseError> for MyError {
+    fn from(value: url::ParseError) -> Self {
+        MyError { err: Box::new(value.into()) }
+    }
+}

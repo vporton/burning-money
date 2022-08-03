@@ -1927,6 +1927,16 @@
   resolved "https://registry.yarnpkg.com/@stripe/stripe-js/-/stripe-js-1.32.0.tgz#4ecdd298db61ad9b240622eafed58da974bd210e"
   integrity sha512-7EvBnbBfS1aynfLRmBFcuumHNGjKxnNkO47rorFBktqDYHwo7Yw6pfDW2iqq0R8r7i7XiJEdWPvvEgQAiDrx3A==
 
+"@sumsub/websdk-react@^1.3.3":
+  version "1.3.3"
+  resolved "https://registry.yarnpkg.com/@sumsub/websdk-react/-/websdk-react-1.3.3.tgz#d5166ba489eb645868afc7593937708c5bff20b0"
+  integrity sha512-t+d4zXowJ1ZPiwD+NqXA0YcqJvn8rloVjJGzOAvzCyvFPhrBn/v7ck8ZVWgA7B31L3Poff8WNRuYYJ7XPKVvkw==
+
+"@sumsub/websdk@^1.3.3":
+  version "1.3.3"
+  resolved "https://registry.yarnpkg.com/@sumsub/websdk/-/websdk-1.3.3.tgz#f6c0c60a5797d0cb4c4b1500f0257cc074e5c52c"
+  integrity sha512-3vQMZyNutIG2qQmiqNbEAJsbCtQUyLFpbnq7HpGNcsDRJwXz5/PG194bulLoLfbVPPYyi0BqT9h1cwXE0IOMUQ==
+
 "@surma/rollup-plugin-off-main-thread@^2.2.3":
   version "2.2.3"
   resolved "https://registry.yarnpkg.com/@surma/rollup-plugin-off-main-thread/-/rollup-plugin-off-main-thread-2.2.3.tgz#ee34985952ca21558ab0d952f00298ad2190c053"

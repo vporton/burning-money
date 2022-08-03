@@ -5,6 +5,7 @@ import { backendUrlPrefix } from "./config";
 import React from 'react';
 import { NavLink } from "react-router-dom";
 import { EthAddress } from "./components/EthAddress";
+import { Kyc } from './KYC';
 
 export default function Card(props: { bidDay: number }) {
     const [user, setUser] = useState<string | null>(null);
@@ -22,7 +23,14 @@ export default function Card(props: { bidDay: number }) {
     }
 
     return <>
-        {user === null ? <><NavLink to={'/login'}>Login</NavLink> <NavLink to={'/register'}>Register</NavLink></> : <a href='#' onClick={logout}>Logout</a>}
+        {user === null ?
+            <>
+                <NavLink to={'/login'}>Login</NavLink> <NavLink to={'/register'}>Register</NavLink>
+            </> :
+            <>
+                <a href='#' onClick={logout}>Logout</a>
+            </>
+        }
         <p>You mine CardToken by using a credit card or a bank account (unlike Bitcoin that is mined by costly equipment).</p>
         <p>To mine an amount of CardToken corresponding to a certain amount of money, pay any amount of money.</p>
         {user !== null ? <PaymentForm bidDay={props.bidDay}/> : ""}
@@ -51,14 +59,16 @@ function PaymentForm(props: { bidDay: number }) {
         }
     }
 
-    // TODO: duplicate code
-    (window as any).ethereum
-        .request({ method: 'eth_accounts' })
-        .then(handleAccountsChanged)
-        .catch((err: any) => {
-            console.error(err);
-        });
-    (window as any).ethereum.on('accountsChanged', handleAccountsChanged);
+    useEffect(() => {
+        // TODO: duplicate code
+        (window as any).ethereum
+            .request({ method: 'eth_accounts' })
+            .then(handleAccountsChanged)
+            .catch((err: any) => {
+                console.error(err);
+            });
+        (window as any).ethereum.on('accountsChanged', handleAccountsChanged);
+    }, []);
 
 
     async function createPaymentIntent() {
@@ -112,7 +122,7 @@ function PaymentForm(props: { bidDay: number }) {
         <>
             <p>
                 <label htmlFor="userAccount">Your crypto account:</label> {" "}
-                <EthAddress defaultValue={userAccount} onChange={(e: any) => setUserAccount(e.target.value)} onValid={setEthAddrValid}/> {" "}
+                <EthAddress value={userAccount} onChange={(e: any) => setUserAccount(e.target.value) } onValid={setEthAddrValid}/> {" "}
                 <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
                 <input type="number" id="fiatAmount" ref={fiatAmountRef}
                     onChange={e => setFiatAmountFromInput(e.target)} disabled={showingPayment}/> {" "}
