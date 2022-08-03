@@ -43,14 +43,13 @@ function PaymentForm(props: { bidDay: number }) {
     const [options, setOptions] = useState(null as unknown as object);
     const [stripePromise, setStripePromise] = useState(null as Promise<Stripe | null> | null);
     const [fiatAmount, setFiatAmount] = useState(0);
+    const [fiatAmountRaw, setFiatAmountRaw] = useState("");
     const [showPayment, setShowPayment] = useState(false);
     const [showingPayment, setShowingPayment] = useState(false);
     const [showPaymentError, setShowPaymentError] = useState("");
     const [paymentIntentId, setPaymentIntentId] = useState("");
     const [userAccount, setUserAccount] = useState("");
     const [ethAddrValid, setEthAddrValid] = useState(false);
-    const fiatAmountRef = useRef<HTMLInputElement>(null);
-    const payButtonRef = useRef<HTMLButtonElement>(null);
 
     // TODO: duplicate code
     function handleAccountsChanged(accounts: any) {
@@ -118,15 +117,20 @@ function PaymentForm(props: { bidDay: number }) {
         setFiatAmount(Math.floor(0.5 + (Number(input.value) * 100)))
     }
 
+    useEffect(() => {
+        setFiatAmount(Math.floor(0.5 + (Number(fiatAmountRaw) * 100)));
+    }, [fiatAmountRaw])
+
     return (
         <>
             <p>
                 <label htmlFor="userAccount">Your crypto account:</label> {" "}
                 <EthAddress value={userAccount} onChange={(e: any) => setUserAccount(e.target.value) } onValid={setEthAddrValid}/> {" "}
                 <label htmlFor="fiatAmount">Investment, in USD:</label> {" "}
-                <input type="number" id="fiatAmount" ref={fiatAmountRef}
-                    onChange={e => setFiatAmountFromInput(e.target)} disabled={showingPayment}/> {" "}
-                <button ref={payButtonRef} disabled={!ethAddrValid || fiatAmount < 0.5 || !stripePromise || showingPayment} onClick={e => doShowPayment()}
+                <input type="number" id="fiatAmount"
+                    onChange={e => setFiatAmountRaw(e.target.value)} disabled={showingPayment}
+                    className={/^[0-9]+(\.[0-9]+)?$/.test(String(fiatAmountRaw)) ? "" : "error"}/> {" "}
+                <button disabled={!ethAddrValid || fiatAmount < 0.5 || !stripePromise || showingPayment} onClick={e => doShowPayment()}
                 >Next &gt;&gt;</button>
                 {showingPayment ?
                     <>

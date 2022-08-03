@@ -83,7 +83,8 @@ export default function Bid() {
                 </TabList>
                 <TabPanel>
                     <p>Amount of GLMR you invest: {" "}
-                        <input type="number" defaultValue={bidAmount} onChange={e => setBidAmount(e.target.value)} min="0.5" max="999999.99"/></p>
+                        <input type="number" defaultValue={bidAmount} onChange={e => setBidAmount(e.target.value)} min="0.5" max="999999.99"
+                        className={/^[0-9]+(\.[0-9]+)?$/.test(String(bidAmount)) ? "" : "error"}/></p>
                     <p><button onClick={bid} disabled={!bidButtonActive}>Bid</button></p>
                 </TabPanel>
                 <TabPanel>
