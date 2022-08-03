@@ -27,17 +27,39 @@ export default function Bid() {
     const [day, setDay] = useState(Math.floor(new Date().getTime() / (24*3600*1000)));
     const [bidAmount, setBidAmount] = useState('');
     const [bidButtonActive, setBidButtonActive] = useState(false);
-    const [bidCCAmount, setCCAmount] = useState('');
-    const [ccBidButtonActive, setCCBidButtonActive] = useState(false);
+    const [totalBid, setTotalBid] = useState(0);
+    const [totalReward, setTotalReward] = useState(0);
     useEffect(() => {
         setBidButtonActive(/^[0-9]+(\.[0-9]+)?/.test(bidAmount) && day !== null);
     }, [day, bidAmount])
-    useEffect(() => {
-        setCCBidButtonActive(/^[0-9]+(\.[0-9]+)?/.test(bidCCAmount) && day !== null);
-    }, [day, bidCCAmount])
+
+    async function updateTotalBid() {
+        const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
+        const { chainId } = await provider.getNetwork();
+        const addrs = (deployed as any)[CHAINS[chainId]];
+        const token = new ethers.Contract(addrs.Token, tokenAbi, provider.getSigner(0));
+        setTotalBid(await token.totalBids(BN.from(day)));
+    }
 
     useEffect(() => {
-        console.log(`Switching to ${day}`);
+        async function doIt() {
+            await (window as any).ethereum.enable();
+            const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
+            const { chainId } = await provider.getNetwork();
+            const addrs = (deployed as any)[CHAINS[chainId]];
+            const token = new ethers.Contract(addrs.Token, tokenAbi, provider.getSigner(0));
+            token.on("Bid", (sender, for_, day_, amount) => {
+                if(day_ == day) {
+                    updateTotalBid();
+                }
+            })
+
+            updateTotalBid();
+            const growthRate = Number(String(await token.growthRate())) / Math.pow(2, 64);
+            const shift = Number(String(await token.shift())) / Math.pow(2, 64);
+            setTotalReward(Math.floor(2**(-growthRate*day+shift)));
+        }
+        doIt();
     }, [day]);
 
     async function bid() {
@@ -55,16 +77,11 @@ export default function Bid() {
         await token.connect(provider.getSigner(0)).bidOn(day, await provider.getSigner(0).getAddress(), {
             value: utils.parseEther(bidAmount),
             // gasLimit: String(estimation.mul(BN.from(1.3))), // TODO
-            gasLimit: '200000',
+            gasLimit: '300000',
         });
         // setInterval(async () => {
         //     console.log('BID:', day, await token.connect(provider.getSigner(0)).totalBids(BN.from(day)));
         // }, 1000);
-    }
-
-    async function ccBid() {
-        // TODO: fiat_amount in 0.50 .. 999999.99
-        window.open(backendUrlPrefix + "/create-stripe-checkout?fiat_amount=" + bidCCAmount, '_self');
     }
 
     return (
@@ -75,6 +92,8 @@ export default function Bid() {
                 multiplied by an exponent of time (for the day of bidding).</p>
             <p style={{color: 'red'}}>If your bid happens in past time, it won't happen, and our current policy is no refunds!</p>
             <p>Bid on: <Interval24Hours onChange={setDay}/></p>
+            <p>Total bid on this time interval: {utils.formatEther(totalBid)} GLMR,
+                competing for {totalReward/1e18} CT.</p>
             <br/>
             <Tabs>
                 <TabList>
