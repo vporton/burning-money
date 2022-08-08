@@ -23,7 +23,6 @@ export default function Withdraw() {
     // maxDate.setUTCDate(maxDate.getUTCDate() - 1);
     const [day, setDay] = useState(0); // TODO: initial value
     const [amount, setAmount] = useState<string>('0');
-    const [withdrawn, setWithdrawn] = useState(false);
     const [userAccount, setUserAccount] = useState<string | null>();
 
     function handleAccountsChanged(accounts: any) {
