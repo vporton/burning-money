@@ -50,17 +50,14 @@ export default function Withdraw() {
                 const { chainId } = await provider.getNetwork();
                 const addrs = (deployed as any)[CHAINS[chainId]];
                 const token = new ethers.Contract(addrs.Token, tokenAbi, provider.getSigner(0));
-                const totalBid = await token.totalBids(BN.from(day));
-                if(totalBid.eq(BN.from(0))) {
-                    setAmount('0');
-                } else {
-                    console.log('userAccount', userAccount)
-                    token.withdrawalAmount(BN.from(day), userAccount)
-                        .then((amount: string) => {
-                            // setAmount(utils.formatEther(amount));
-                            setAmount(String(amount));
-                        });
-                }
+                // const amount = await token.totalBids(BN.from(day));
+                console.log('userAccount', userAccount)
+                token.withdrawalAmount(BN.from(day), userAccount)
+                    .then((amount: string) => {
+                        // setAmount(utils.formatEther(amount));
+                        setAmount(String(BN.from(amount).div(BN.from(2).pow(64))));
+                    })
+                    .catch(() => setAmount('0'));
             }
         }
         doIt()
@@ -87,7 +84,7 @@ export default function Withdraw() {
             <p>Withdraw for bid interval:</p>
             <Interval24Hours onChange={setDay}/>
             <p><button onClick={withdraw}>Withdraw</button> <span>{amount === '0' ? '' : utils.formatEther(amount)}</span> CT{" "}
-                {withdrawn ? "already withdrawn" : "not withdrawn"}
+                {amount === '0' ? "already withdrawn" : "not withdrawn"}
             </p>
         </>
     );
