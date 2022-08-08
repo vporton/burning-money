@@ -8,6 +8,7 @@ import { CHAINS } from './data';
 import Token from "./Token.json";
 import { useEffect, useState } from 'react';
 import { Interval24Hours } from "./components/Interval24Hours";
+import { domainToUnicode } from "url";
 const { utils, BigNumber: BN } = ethers;
 const tokenAbi = Token.abi;
 
@@ -40,17 +41,22 @@ export default function Withdraw() {
         });
     (window as any).ethereum.on('accountsChanged', handleAccountsChanged);
 
-    useEffect(() => {
+    async function updateWithdrawalAmount() {
+        // TODO: Duplicate code
         async function doIt() {
-            // TODO: Duplicate code
             await (window as any).ethereum.enable();
             if(userAccount !== null) {
                 const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
                 const { chainId } = await provider.getNetwork();
                 const addrs = (deployed as any)[CHAINS[chainId]];
                 const token = new ethers.Contract(addrs.Token, tokenAbi, provider.getSigner(0));
-                // const amount = await token.totalBids(BN.from(day));
-                console.log('userAccount', userAccount)
+                const listener = (_sender: any, _for: any, day_: number, account: string | undefined, _amount: any) => {
+                    if(day_ == day && account == userAccount) {
+                        updateWithdrawalAmount();
+                    }
+                };
+                token.off("Withdraw", listener);
+                token.on("Withdraw", listener);
                 token.withdrawalAmount(BN.from(day), userAccount)
                     .then((amount: string) => {
                         // setAmount(utils.formatEther(amount));
@@ -59,7 +65,21 @@ export default function Withdraw() {
                     .catch(() => setAmount('0'));
             }
         }
-        doIt()
+        doIt();
+    }
+
+    useEffect(() => {
+        async function doIt() {
+            const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
+            const { chainId } = await provider.getNetwork();
+            const addrs = (deployed as any)[CHAINS[chainId]];
+            const token = new ethers.Contract(addrs.Token, tokenAbi, provider.getSigner(0));
+        }
+        doIt();
+    }, []);
+
+    useEffect(() => {
+        updateWithdrawalAmount();
     }, [day, userAccount]);
 
     async function withdraw() {

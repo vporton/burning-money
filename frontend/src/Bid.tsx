@@ -13,6 +13,7 @@ import { backendUrlPrefix } from './config';
 import Card from './Card';
 import React from 'react';
 import { Interval24Hours } from './components/Interval24Hours';
+import { Listener } from 'history';
 const { utils, BigNumber: BN } = ethers;
 const tokenAbi = Token.abi;
 const erc20Abi = ERC20.abi;
@@ -48,12 +49,14 @@ export default function Bid() {
             const { chainId } = await provider.getNetwork();
             const addrs = (deployed as any)[CHAINS[chainId]];
             const token = new ethers.Contract(addrs.Token, tokenAbi, provider.getSigner(0));
-            token.on("Bid", (sender, for_, day_, amount) => {
+
+            const listener = (_sender: any, _for: any, day_: number, _amount: any) => {
                 if(day_ == day) {
                     updateTotalBid();
                 }
-            })
-
+            };
+            token.off("Bid", listener);
+            token.on("Bid", listener);
             updateTotalBid();
             const growthRate = Number(String(await token.growthRate())) / Math.pow(2, 64);
             const shift = Number(String(await token.shift())) / Math.pow(2, 64);
