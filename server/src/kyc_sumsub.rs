@@ -1,13 +1,15 @@
 use std::sync::Arc;
 use actix_web::{post, web};
 use std::time::{SystemTime, UNIX_EPOCH};
+use actix_identity::Identity;
 use hmac::{Hmac, Mac};
 use reqwest::{Client, Method, Request, Url};
 use reqwest::header::HeaderValue;
 use sha2::Sha256;
 use serde::Deserialize;
-use urlencoding::encode;
-use crate::{CommonReadonly, MyError};
+use serde_json::json;
+use tokio::sync::Mutex;
+use crate::{Common, CommonReadonly, MyError};
 
 fn signature(readonly: &CommonReadonly, timestamp: u64, http_method: &str, path: &str, body: &[u8]) -> String {
     let catenated = [format!("{}", timestamp).as_bytes(), http_method.as_bytes(), path.as_bytes(), body].concat();
@@ -46,20 +48,26 @@ fn modify_request(readonly: &Arc<CommonReadonly>, req: &mut Request) -> Result<(
     Ok(())
 }
 
-#[derive(Deserialize)]
-#[allow(non_snake_case)]
-pub struct AccessTokenQuery {
-    userId: String,
-}
-
 #[post("/kyc/access-token")]
-pub async fn sumsub_generate_access_token(q: web::Query<AccessTokenQuery>, readonly: web::Data<Arc<CommonReadonly>>)
-    -> Result<String, MyError>
+pub async fn sumsub_generate_access_token(
+    ident: Identity,
+    common: web::Data<Arc<Mutex<Common>>>,
+    readonly: web::Data<Arc<CommonReadonly>>
+) -> Result<String, MyError>
 {
+    let conn = &common.lock().await.db;
+    let email: String = conn.query_one("SELECT email FROM users WHERE id=$1", &[&ident.id()?]).await?.get(0);
+    let client = Client::new();
+    let url = format!("https://api.sumsub.com/resources/applicants?levelName=basic-kyc-level");
+    let body = json!({"externalUserId": ident.id()?, "email": email});
+    let mut request = Request::new(Method::POST, Url::parse(url.as_str())?);
+    *request.body_mut() = Some(body.to_string().into());
+    modify_request(&*readonly, &mut request)?;
+    let _res = client.execute(request).await?; // TODO: What they return on first and on second request?
     let url = format!(
         "https://api.sumsub.com/resources/accessTokens?userId={}&levelName=basic-kyc-level",
-        encode(q.userId.as_str()));
-    let client = Client::new();
+        ident.id()?,
+    );
     let mut request = Request::new(Method::POST, Url::parse(url.as_str())?);
     modify_request(&*readonly, &mut request)?;
     #[derive(Deserialize)]
