@@ -175,7 +175,7 @@ async fn process_current(
                     user_id: tx.get("user_id"),
                     eth_account: tx.get("eth_account"),
                     usd_amount: tx.get("usd_amount"),
-                    crypto_amount: i128::from_str(tx.get("crypto_amount"))?,
+                    crypto_amount: i128::from_le_bytes(*<&[u8; 16]>::try_from(tx.get::<_, &[u8]>("crypto_amount"))?),
                     bid_date: tx.get("bid_date"),
                     status: tx.get("status"),
                     tx_id: tx.get("tx_id"),
@@ -401,7 +401,8 @@ async fn main() -> Result<(), anyhow::Error> {
             .query("SELECT crypto_amount FROM txs WHERE status!='confirmed'", &[])
             .await?;
         for row in &rows {
-            let amount = i128::from_str(row.get(0))?;
+            let bytes: &[u8] = row.get(0);
+            let amount = i128::from_le_bytes(<[u8; 16]>::try_from(bytes)?);
             lock_funds(common.clone(), amount).await?; // takes gas into account
         }
     };

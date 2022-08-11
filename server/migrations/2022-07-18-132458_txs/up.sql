@@ -7,7 +7,7 @@ CREATE TABLE txs (
     user_id BIGINT NOT NULL,
     eth_account BYTEA NOT NULL,
     usd_amount BIGINT NOT NULL,
-    crypto_amount NUMERIC(39) NOT NULL,
+    crypto_amount BYTEA NOT NULL, -- 16 bytes (little endian)
     bid_date BIGINT NOT NULL,
     status txs_status_type NOT NULL DEFAULT 'before_ordered',
     tx_id BYTEA NULL,

@@ -125,7 +125,7 @@ async fn do_exchange(readonly: &Arc<CommonReadonly>, crypto_account: Address, bi
         "bidOn",
         (bid_day as u64, crypto_account),
         Options::with(|opt| {
-            opt.value = Some(U256::from(crypto_amount));
+            opt.value = Some(U256::from( crypto_amount));
             opt.gas = Some(500000.into()); // TODO
         }),
         readonly.ethereum_key.clone(),
@@ -221,7 +221,7 @@ pub async fn confirm_payment(
                         &ident.id()?.parse::<i64>()?,
                         &<Address>::from_str(&form.crypto_account)?.as_bytes(), // TODO: better error message (not error 500)
                         &fiat_amount,
-                        &collateral_amount.to_string(),
+                        &(&collateral_amount.to_le_bytes() as &[u8]),
                         &form.bid_day,
                     ],
                 ).await?.get(0)
@@ -247,12 +247,12 @@ pub async fn confirm_payment(
         //     json!({"success": true})
         // }
         "canceled" | "payment_failed" => {
-            let collateral_amount: String = common.lock().await.db.query_one(
+            let row = common.lock().await.db.query_one(
                 "SELECT crypto_amount FROM txs WHERE payment_intent_id=$1",
                 &[&form.payment_intent_id])
-                .await?
-                .get(0);
-            let collateral_amount = i128::from_str(collateral_amount.as_str())?;
+                .await?;
+            let collateral_amount: &[u8] = row.get(0);
+            let collateral_amount = i128::from_le_bytes(<[u8; 16]>::try_from(collateral_amount)?);
             lock_funds((**common).clone(), -collateral_amount).await?;
             common.lock().await.db.execute(
                 "DELETE FROM txs WHERE payment_intent_id=$1",
