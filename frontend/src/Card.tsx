@@ -56,6 +56,8 @@ function PaymentForm(props: { bidDay: number }) {
     const [paymentIntentId, setPaymentIntentId] = useState("");
     const [userAccount, setUserAccount] = useState("");
     const [ethAddrValid, setEthAddrValid] = useState(false);
+    const [serverAccount, setServerAccount] = useState("");
+    const [serverBalance, setServerBalance] = useState(BN.from(0));
 
     // TODO: duplicate code
     function handleAccountsChanged(accounts: any) {
@@ -104,6 +106,24 @@ function PaymentForm(props: { bidDay: number }) {
     }
 
     useEffect(() => {
+        async function doIt() {
+            await (window as any).ethereum.enable();
+            const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
+            provider.on("block", (tx) => {
+                if(serverAccount !== "") {
+                    provider.getBalance(serverAccount)
+                        .then(balance => setServerBalance(balance));
+                }
+            });
+            if(serverAccount !== "") {
+                provider.getBalance(serverAccount)
+                    .then(balance => setServerBalance(balance));
+            }
+        }
+        doIt();
+    }, [serverAccount])
+
+    useEffect(() => {
         fetch(backendUrlPrefix + "/stripe-pubkey")
             .then(res => res.text())
             .then(stripePubkey => {
@@ -112,6 +132,11 @@ function PaymentForm(props: { bidDay: number }) {
                     apiVersion: '2020-08-27;server_side_confirmation_beta=v1',
                 });
                 setStripePromise(stripePromise_);
+            });
+        fetch(backendUrlPrefix + "/server-account")
+            .then(res => res.text())
+            .then(serverAccount_ => {
+                setServerAccount(serverAccount_);
             });
     }, []);
 
@@ -140,7 +165,7 @@ function PaymentForm(props: { bidDay: number }) {
                 <input type="number" id="fiatAmount"
                     onChange={e => setFiatAmountRaw(e.target.value)} disabled={showingPayment}
                     className={/^[0-9]+(\.[0-9]+)?$/.test(String(fiatAmountRaw)) ? "" : "error"}/> {" "}
-                bid: {utils.formatEther(BN.from(cryptoAmount))} GMLR* {" "}
+                bid: {utils.formatEther(BN.from(cryptoAmount))} GMLR* (of {utils.formatEther(serverBalance)} GLMR server balance) {" "}
                 <button disabled={!ethAddrValid || fiatAmount < 0.5 || !stripePromise || showingPayment} onClick={e => doShowPayment()}
                 >Next &gt;&gt;</button>
                 {showingPayment ?

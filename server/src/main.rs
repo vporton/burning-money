@@ -13,7 +13,7 @@ use std::time::Duration;
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::{SessionMiddleware, storage::CookieSessionStore};
-use actix_web::{App, cookie, HttpServer, web};
+use actix_web::{App, cookie, HttpResponse, HttpServer, Responder, web};
 use actix_web::web::Data;
 use env_logger::TimestampPrecision;
 use clap::Parser;
@@ -31,6 +31,8 @@ use tokio_interruptible_future::interruptible;
 use tokio_postgres::NoTls;
 use web3::api::Namespace;
 use web3::api::EthFilter;
+use actix_web::get;
+use hex::ToHex;
 use crate::errors::{CannotLoadDataError, MyError, StripeError};
 use crate::kyc_sumsub::sumsub_generate_access_token;
 use crate::models::Tx;
@@ -156,7 +158,7 @@ async fn prepare_data(common: Arc<Mutex<Common>>, readonly: Arc<CommonReadonly>)
 async fn process_current(
     common: Arc<Mutex<Common>>,
     readonly: Arc<CommonReadonly>,
-    program_finished_rx: async_channel::Receiver<()>
+    program_finished_rx: async_channel::Receiver<()>,
 ) -> Result<(), anyhow::Error> {
     let common2 = common.clone();
     let my_loop = move || {
@@ -207,9 +209,9 @@ async fn process_current(
 }
 
 async fn process_blocks(
-        common: Arc<Mutex<Common>>,
-        readonly: Arc<CommonReadonly>,
-        program_finished_rx: async_channel::Receiver<()>
+    common: Arc<Mutex<Common>>,
+    readonly: Arc<CommonReadonly>,
+    program_finished_rx: async_channel::Receiver<()>,
 ) -> Result<(), anyhow::Error> {
     let common3 = common.clone();
     let readonly2 = readonly.clone();
@@ -305,7 +307,7 @@ async fn process_blocks(
                     let conn = &common3.lock().await.db;
                     conn.execute(
                         "UPDATE txs SET status='confirmed' WHERE tx_id=$1",
-                        &[&tx.as_bytes()]
+                        &[&tx.as_bytes()],
                     ).await?;
                 }
                 Ok::<_, anyhow::Error>(())
@@ -314,6 +316,13 @@ async fn process_blocks(
     }
 
     Ok(())
+}
+
+#[get("/server-account")]
+async fn query_server_account(readonly: web::Data<Arc<CommonReadonly>>) -> Result<impl Responder, MyError> {
+    Ok(HttpResponse::Ok().body(
+        format!("0x{}", SecretKeyRef::new(&readonly.ethereum_key).address().encode_hex::<String>()))
+    )
 }
 
 #[actix_web::main]
@@ -456,6 +465,7 @@ async fn main() -> Result<(), anyhow::Error> {
             .service(create_payment_intent)
             .service(confirm_payment)
             .service(sumsub_generate_access_token)
+            .service(query_server_account)
             .service(fiat_to_crypto_query)
             .service(
                 actix_files::Files::new("/media", "media").use_last_modified(true),
