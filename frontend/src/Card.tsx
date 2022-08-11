@@ -165,7 +165,8 @@ function PaymentForm(props: { bidDay: number }) {
                 <input type="number" id="fiatAmount"
                     onChange={e => setFiatAmountRaw(e.target.value)} disabled={showingPayment}
                     className={/^[0-9]+(\.[0-9]+)?$/.test(String(fiatAmountRaw)) ? "" : "error"}/> {" "}
-                bid: {utils.formatEther(BN.from(cryptoAmount))} GMLR* (of {utils.formatEther(serverBalance)} GLMR server balance) {" "}
+                bid: <span style={{color: BN.from(cryptoAmount).gte(serverBalance) ? 'red' : 'inherit'}}>{utils.formatEther(BN.from(cryptoAmount))} GMLR</span>* {" "}
+                (of {utils.formatEther(serverBalance)} GLMR server balance) {" "}
                 <button disabled={!ethAddrValid || fiatAmount < 0.5 || !stripePromise || showingPayment} onClick={e => doShowPayment()}
                 >Next &gt;&gt;</button>
                 {showingPayment ?
