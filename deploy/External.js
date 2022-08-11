@@ -22,7 +22,7 @@ module.exports = async ({getNamedAccounts, deployments, network}) => {
         console.log("Server address: ", serverAddress);
         await deployerSigner.sendTransaction({
             to: serverAddress,
-            value: ethers.utils.parseEther("0.5"),
+            value: ethers.utils.parseEther("500"),
         });
         console.log(`Server account funding ${await ethers.provider.getBalance(serverAddress)}`)
     }
