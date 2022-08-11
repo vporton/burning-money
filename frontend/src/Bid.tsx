@@ -46,6 +46,7 @@ export default function Bid() {
 
     useEffect(() => {
         (window as any).ethereum.on('chainChanged', updateBid);
+        (window as any).on('accountsChanged', updateBid);
     });
 
     useEffect(() => {
