@@ -6,6 +6,8 @@ import React from 'react';
 import { NavLink } from "react-router-dom";
 import { EthAddress } from "./components/EthAddress";
 import { Kyc } from './KYC';
+import { ethers } from 'ethers';
+const { utils, BigNumber: BN } = ethers;
 
 export default function Card(props: { bidDay: number }) {
     const [user, setUser] = useState<string | null>(null);
@@ -47,6 +49,7 @@ function PaymentForm(props: { bidDay: number }) {
     const [stripePromise, setStripePromise] = useState(null as Promise<Stripe | null> | null);
     const [fiatAmount, setFiatAmount] = useState(0);
     const [fiatAmountRaw, setFiatAmountRaw] = useState("");
+    const [cryptoAmount, setCryptoAmount] = useState("0");
     const [showPayment, setShowPayment] = useState(false);
     const [showingPayment, setShowingPayment] = useState(false);
     const [showPaymentError, setShowPaymentError] = useState("");
@@ -121,7 +124,12 @@ function PaymentForm(props: { bidDay: number }) {
     }
 
     useEffect(() => {
-        setFiatAmount(Math.floor(0.5 + (Number(fiatAmountRaw) * 100)));
+        const fiatAmount_ = Math.floor(0.5 + (Number(fiatAmountRaw) * 100));
+        setFiatAmount(fiatAmount_);
+        console.log("YYY", fiatAmount_)
+        fetch(`${backendUrlPrefix}/fiat-to-crypto?fiat_amount=${encodeURIComponent(fiatAmount_)}`)
+            .then(res => res.text())
+            .then(wei => setCryptoAmount(wei));
     }, [fiatAmountRaw])
 
     return (
@@ -133,6 +141,7 @@ function PaymentForm(props: { bidDay: number }) {
                 <input type="number" id="fiatAmount"
                     onChange={e => setFiatAmountRaw(e.target.value)} disabled={showingPayment}
                     className={/^[0-9]+(\.[0-9]+)?$/.test(String(fiatAmountRaw)) ? "" : "error"}/> {" "}
+                bid: {utils.formatEther(BN.from(cryptoAmount))} GMLR* {" "}
                 <button disabled={!ethAddrValid || fiatAmount < 0.5 || !stripePromise || showingPayment} onClick={e => doShowPayment()}
                 >Next &gt;&gt;</button>
                 {showingPayment ?
@@ -142,6 +151,7 @@ function PaymentForm(props: { bidDay: number }) {
                     </>
                     : ""}
             </p>
+            <p>* As it was the last time retrieved.</p>
             {showPayment && <Elements stripe={stripePromise} options={options}>
                 <PaymentFormContent paymentIntentId={paymentIntentId} userAccount={userAccount} bidDay={props.bidDay} onPayClicked={onPayClicked}
                 onPaid={() => {setShowingPayment(false); setShowPayment(false);}}/>

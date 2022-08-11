@@ -35,7 +35,7 @@ use crate::errors::{CannotLoadDataError, MyError, StripeError};
 use crate::kyc_sumsub::sumsub_generate_access_token;
 use crate::models::Tx;
 use crate::pages::{about_us, not_found};
-use crate::stripe::{confirm_payment, create_payment_intent, exchange_item, lock_funds, stripe_public_key};
+use crate::stripe::{confirm_payment, create_payment_intent, exchange_item, fiat_to_crypto_query, lock_funds, stripe_public_key};
 use crate::user::{user_email, user_identity, user_login, user_logout, user_register};
 
 mod pages;
@@ -456,6 +456,7 @@ async fn main() -> Result<(), anyhow::Error> {
             .service(create_payment_intent)
             .service(confirm_payment)
             .service(sumsub_generate_access_token)
+            .service(fiat_to_crypto_query)
             .service(
                 actix_files::Files::new("/media", "media").use_last_modified(true),
             )

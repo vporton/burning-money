@@ -173,6 +173,20 @@ async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Res
     )
 }
 
+#[derive(Deserialize)]
+pub struct FiatToCryptoQuery {
+    fiat_amount: i64,
+}
+
+#[get("/fiat-to-crypto")]
+pub async fn fiat_to_crypto_query(readonly: web::Data<Arc<CommonReadonly>>, q: web::Query<FiatToCryptoQuery>)
+    -> Result<impl Responder, MyError>
+{
+    Ok(
+        HttpResponse::Ok().body(fiat_to_crypto(&*readonly, q.fiat_amount).await?.to_string())
+    )
+}
+
 #[post("/confirm-payment")]
 pub async fn confirm_payment(
     form: web::Form<ConfirmPaymentForm>,
