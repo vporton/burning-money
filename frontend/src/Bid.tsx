@@ -29,18 +29,24 @@ export default function Bid() {
     const [bidAmount, setBidAmount] = useState('');
     const [bidButtonActive, setBidButtonActive] = useState(false);
     const [totalBid, setTotalBid] = useState(0);
+    const [myBid, setMyBid] = useState(0);
     const [totalReward, setTotalReward] = useState(0);
     useEffect(() => {
         setBidButtonActive(/^[0-9]+(\.[0-9]+)?/.test(bidAmount) && day !== null);
     }, [day, bidAmount])
 
-    async function updateTotalBid() {
+    async function updateBid() {
         const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
         const { chainId } = await provider.getNetwork();
         const addrs = (deployed as any)[CHAINS[chainId]];
         const token = new ethers.Contract(addrs.Token, tokenAbi, provider.getSigner(0));
         setTotalBid(await token.totalBids(BN.from(day)));
+        setMyBid(await token.bids(BN.from(day), await provider.getSigner(0).getAddress()));
     }
+
+    useEffect(() => {
+        (window as any).ethereum.on('chainChanged', updateBid);
+    });
 
     useEffect(() => {
         async function doIt() {
@@ -52,12 +58,12 @@ export default function Bid() {
 
             const listener = (_sender: any, _for: any, day_: number, _amount: any) => {
                 if(day_ == day) {
-                    updateTotalBid();
+                    updateBid();
                 }
             };
             token.off("Bid", listener);
             token.on("Bid", listener);
-            updateTotalBid();
+            updateBid();
             const growthRate = Number(String(await token.growthRate())) / Math.pow(2, 64);
             const shift = Number(String(await token.shift())) / Math.pow(2, 64);
             setTotalReward(Math.floor(2**(-growthRate*day+shift)));
@@ -95,7 +101,7 @@ export default function Bid() {
                 multiplied by an exponent of time (for the day of bidding).</p>
             <p style={{color: 'red'}}>If your bid happens in past time, it won't happen, and our current policy is no refunds!</p>
             <p>Bid on: <Interval24Hours onChange={setDay}/></p>
-            <p>Total bid on this time interval: {utils.formatEther(totalBid)} GLMR,
+            <p>Your/total bid on this time interval: {utils.formatEther(myBid)} / {utils.formatEther(totalBid)} GLMR,
                 competing for {totalReward/1e18} CT.</p>
             <br/>
             <Tabs>
