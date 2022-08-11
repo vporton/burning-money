@@ -5,7 +5,7 @@ use std::num::ParseIntError;
 use actix_web::http::StatusCode;
 use actix_web::{HttpResponse, ResponseError};
 use actix_web::error::BlockingError;
-use actix_web::http::header::ContentType;
+use actix_web::http::header::{ContentType, ToStrError};
 use ethers_core::abi::AbiError;
 use lambda_web::LambdaError;
 // use stripe::{RequestError, StripeError};
@@ -81,7 +81,7 @@ pub enum MyErrorBase {
     Json(serde_json::Error),
     AuthenticationFailed(AuthenticationFailedError),
     // Anyhow(MyError),
-    FromHex(rustc_hex::FromHexError),
+    FromHex(rustc_hex::FromHexError), // TODO: duplicate with `hex::FromHexError`?
     ParseTime(chrono::ParseError),
     Web3(web3::Error),
     Web3Abi(web3::ethabi::Error),
@@ -98,6 +98,8 @@ pub enum MyErrorBase {
     CannotLoadData(CannotLoadDataError),
     KYC(KYCError),
     UrlParse(url::ParseError),
+    ActixHeaderToStr(ToStrError),
+    FromHex2(hex::FromHexError),
 }
 
 #[derive(Serialize)]
@@ -166,6 +168,8 @@ impl Display for MyErrorBase {
             Self::CannotLoadData(_) => write!(f, "Cannot load data."),
             Self::KYC(_) => write!(f, "KYC didn't pass."),
             Self::UrlParse(err) => write!(f, "URL parse error: {}", err),
+            Self::ActixHeaderToStr(err) => write!(f, "Converting header to string: {}", err),
+            Self::FromHex2(err) => write!(f, "Converting from hex: {}", err),
         }
     }
 }
@@ -373,6 +377,18 @@ impl From<url::ParseError> for MyErrorBase {
     }
 }
 
+impl From<ToStrError> for MyErrorBase {
+    fn from(value: ToStrError) -> Self {
+        Self::ActixHeaderToStr(value)
+    }
+}
+
+impl From<hex::FromHexError> for MyErrorBase {
+    fn from(value: hex::FromHexError) -> Self {
+        Self::FromHex2(value)
+    }
+}
+
 ////////////////////////////////////
 
 impl From<InterruptError> for MyError {
@@ -533,6 +549,18 @@ impl From<KYCError> for MyError {
 
 impl From<url::ParseError> for MyError {
     fn from(value: url::ParseError) -> Self {
+        MyError { err: Box::new(value.into()) }
+    }
+}
+
+impl From<ToStrError> for MyError {
+    fn from(value: ToStrError) -> Self {
+        MyError { err: Box::new(value.into()) }
+    }
+}
+
+impl From<hex::FromHexError> for MyError {
+    fn from(value: hex::FromHexError) -> Self {
         MyError { err: Box::new(value.into()) }
     }
 }

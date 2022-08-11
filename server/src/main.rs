@@ -1,3 +1,5 @@
+extern crate core;
+
 use futures::stream::StreamExt;
 use std::collections::HashSet;
 use tokio::sync::{mpsc, Mutex, Semaphore};
