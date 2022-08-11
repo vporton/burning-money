@@ -16,15 +16,16 @@ export function Interval24Hours(props: {defaultValue?: number, onChange?: (k: nu
         const end_ = new Date(0);
         end_.setUTCSeconds((day_+1) * 24*3600);
         setEnd(end_);
-    }
-    function handleOnChange(event: ChangeEvent) {
-        const day_ = Number((event.target as HTMLInputElement).value);
-        setDay(day_);
         if(props.onChange !== undefined) {
             props.onChange(day_);
         }
     }
+    function handleOnChange(event: ChangeEvent) {
+        const day_ = Number((event.target as HTMLInputElement).value);
+        setDay(day_);
+    }
     useEffect(() => {
+        console.log("defaultValue", defaultValue)
         setDay(defaultValue);
     }, [])
     return (

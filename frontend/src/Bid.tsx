@@ -31,22 +31,29 @@ export default function Bid() {
     const [totalBid, setTotalBid] = useState(0);
     const [myBid, setMyBid] = useState(0);
     const [totalReward, setTotalReward] = useState(0);
+
     useEffect(() => {
         setBidButtonActive(/^[0-9]+(\.[0-9]+)?/.test(bidAmount) && day !== null);
     }, [day, bidAmount])
 
     async function updateBid() {
+        console.log("updateBid1", day)
         const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
         const { chainId } = await provider.getNetwork();
         const addrs = (deployed as any)[CHAINS[chainId]];
         const token = new ethers.Contract(addrs.Token, tokenAbi, provider.getSigner(0));
         setTotalBid(await token.totalBids(BN.from(day)));
         setMyBid(await token.bids(BN.from(day), await provider.getSigner(0).getAddress()));
+        console.log("updateBid2")
     }
 
     useEffect(() => {
+        updateBid();
+    }, [day])
+
+    useEffect(() => {
         (window as any).ethereum.on('chainChanged', updateBid);
-        (window as any).on('accountsChanged', updateBid);
+        (window as any).ethereum.on('accountsChanged', updateBid);
     });
 
     useEffect(() => {
