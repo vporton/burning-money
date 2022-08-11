@@ -175,7 +175,7 @@ async fn process_current(
                     user_id: tx.get("user_id"),
                     eth_account: tx.get("eth_account"),
                     usd_amount: tx.get("usd_amount"),
-                    crypto_amount: tx.get("crypto_amount"),
+                    crypto_amount: i128::from_str(tx.get("crypto_amount"))?,
                     bid_date: tx.get("bid_date"),
                     status: tx.get("status"),
                     tx_id: tx.get("tx_id"),
@@ -266,7 +266,7 @@ async fn process_blocks(
                             common.lock().await.balance = readonly.web3.eth().balance(
                                 SecretKeyRef::new(&readonly.ethereum_key).address(), None,
                             )
-                                .await?.as_u64() as i128;
+                                .await?.as_u128() as i128;
                         }
                     } else {
                         break;
