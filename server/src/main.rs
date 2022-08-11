@@ -248,8 +248,8 @@ async fn process_blocks(
                                 let row = common.lock().await.db
                                     .query_opt("SELECT id, crypto_amount FROM txs WHERE tx_id=$1", &[&tx.as_bytes()]).await?;
                                 if let Some(row) = row {
-                                    let (id, amount): (i64, &str) = (row.get(0), row.get(1));
-                                    let amount = i128::from_str(amount)?;
+                                    let (id, amount): (i64, &[u8]) = (row.get(0), row.get(1));
+                                    let amount = i128::from_le_bytes(<[u8; 16]>::try_from(amount)?);
                                     { // limit lock duration
                                         let mut common = common.lock().await;
                                         if common.transactions_awaited.remove(&tx) {
