@@ -30,6 +30,10 @@ contract Token is ERC20, ERC2771Context, Ownable {
         emit TokenCreated(_growthRate, _shift, _trustedForwarder, _name, _symbol);
     }
 
+    function decimals() public view virtual override returns (uint8) {
+        return 10;
+    }
+
     /// `_time` must be a multiple of 24*3600, otherwise the bid is lost.
     /// Need to approve this contract for transfers of collateral before calling this function.
     function bidOn(uint64 _day, address _for) public payable {

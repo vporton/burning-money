@@ -37,14 +37,13 @@ export default function Bid() {
     }, [day, bidAmount])
 
     async function updateBid() {
-        console.log("updateBid1", day)
+        await (window as any).ethereum.enable();
         const provider = new ethers.providers.Web3Provider((window as any).ethereum, "any");
         const { chainId } = await provider.getNetwork();
         const addrs = (deployed as any)[CHAINS[chainId]];
         const token = new ethers.Contract(addrs.Token, tokenAbi, provider.getSigner(0));
         setTotalBid(await token.totalBids(BN.from(day)));
         setMyBid(await token.bids(BN.from(day), await provider.getSigner(0).getAddress()));
-        console.log("updateBid2")
     }
 
     useEffect(() => {
@@ -112,7 +111,7 @@ export default function Bid() {
                 and our current policy is no refunds!</p>
             <p>Bid on: <Interval24Hours onChange={setDay} defaultValue={Math.floor(new Date().getTime() / (3600*24*1000)) + 1}/></p>
             <p>Your/total bid on this time interval: {utils.formatEther(myBid)} / {utils.formatEther(totalBid)} GLMR,
-                competing for {totalReward/1e18} CT.</p>
+                competing for {totalReward/1e10} CT.</p>
             <br/>
             <Tabs>
                 <TabList>

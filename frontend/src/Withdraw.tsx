@@ -100,7 +100,7 @@ export default function Withdraw() {
     // TODO: Withdrawal to other account.
     return (
         <>
-            <p>Withdraw for bid interval:</p>
+            <p>Withdraw for bid interval (you can withdraw any time in the future after the interval starts):</p>
             <Interval24Hours onChange={setDay}/>
             <p><button onClick={withdraw}>Withdraw</button> <span>{amount === '0' ? '' : utils.formatEther(amount)}</span> CT{" "}
                 {amount === '0' ? "already withdrawn" : "not withdrawn"}
