@@ -25,7 +25,6 @@ export function Interval24Hours(props: {defaultValue?: number, onChange?: (k: nu
         setDay(day_);
     }
     useEffect(() => {
-        console.log("defaultValue", defaultValue)
         setDay(defaultValue);
     }, [])
     return (
