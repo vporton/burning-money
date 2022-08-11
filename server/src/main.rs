@@ -109,8 +109,8 @@ pub struct Common {
     // notify_tx_submitted_tx: mpsc::UnboundedSender<()>,
     // notify_tx_submitted_rx: Arc<Mutex<mpsc::UnboundedReceiver<()>>>,
     // in Arc not to lock the entire struct for too long
-    balance: i64,
-    locked_funds: i64,
+    balance: i128,
+    locked_funds: i128,
 }
 
 #[derive(Parser)]
@@ -248,7 +248,8 @@ async fn process_blocks(
                                 let row = common.lock().await.db
                                     .query_opt("SELECT id, crypto_amount FROM txs WHERE tx_id=$1", &[&tx.as_bytes()]).await?;
                                 if let Some(row) = row {
-                                    let (id, amount): (i64, i64) = (row.get(0), row.get(1));
+                                    let (id, amount): (i64, &str) = (row.get(0), row.get(1));
+                                    let amount = i128::from_str(amount)?;
                                     { // limit lock duration
                                         let mut common = common.lock().await;
                                         if common.transactions_awaited.remove(&tx) {
@@ -265,7 +266,7 @@ async fn process_blocks(
                             common.lock().await.balance = readonly.web3.eth().balance(
                                 SecretKeyRef::new(&readonly.ethereum_key).address(), None,
                             )
-                                .await?.as_u64() as i64;
+                                .await?.as_u64() as i128;
                         }
                     } else {
                         break;
@@ -392,7 +393,7 @@ async fn main() -> Result<(), anyhow::Error> {
         notify_ordered_rx: Arc::new(Mutex::new(notify_ordered_rx)),
         // notify_tx_submitted_tx,
         // notify_tx_submitted_rx: Arc::new(Mutex::new(notify_tx_submitted_rx)),
-        balance: balance.as_u64() as i64,
+        balance: balance.as_u128() as i128,
         locked_funds: 0,
     }));
     { // block
@@ -400,7 +401,8 @@ async fn main() -> Result<(), anyhow::Error> {
             .query("SELECT crypto_amount FROM txs WHERE status!='confirmed'", &[])
             .await?;
         for row in &rows {
-            lock_funds(common.clone(), row.get(0)).await?; // takes gas into account
+            let amount = i128::from_str(row.get(0))?;
+            lock_funds(common.clone(), amount).await?; // takes gas into account
         }
     };
 

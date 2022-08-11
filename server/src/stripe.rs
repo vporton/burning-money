@@ -88,10 +88,10 @@ async fn finalize_payment(payment_intent_id: &str, readonly: &Arc<CommonReadonly
     Ok(())
 }
 
-pub async fn lock_funds(common: Arc<Mutex<Common>>, amount: i64) -> Result<(), anyhow::Error> {
+pub async fn lock_funds(common: Arc<Mutex<Common>>, amount: i128) -> Result<(), anyhow::Error> {
     debug!("Add to locked crypto {}", amount);
     let mut common = common.lock().await; // locks for all duration of the function
-    const MAX_GAS: i64 = 30_000_000; // TODO: less
+    const MAX_GAS: i128 = 30_000_000; // TODO: less
     let locked_funds = if common.locked_funds >= 0 { // hack
         common.locked_funds + MAX_GAS
     } else {
@@ -141,7 +141,7 @@ pub struct ConfirmPaymentForm {
     bid_day: i64,
 }
 
-async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Result<i64, anyhow::Error> {
+async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Result<i128, anyhow::Error> {
     let price_oracle =
         Contract::from_json(
             readonly.web3.eth(),
@@ -165,7 +165,17 @@ async fn fiat_to_crypto(readonly: &Arc<CommonReadonly>, fiat_amount: i64) -> Res
         price_oracle.query("latestRoundData", (), None, Options::default(), None).await?;
     let answer = answer.as_u64() as i64;
     let answer = ((answer as f64) * (1.0 - readonly.config.our_tax)) as i64;
-    Ok(fiat_amount * i64::pow(10, decimals as u32) / answer)
+    debug!("ANSWER: {}", answer);
+    debug!("ANSWER2: {fiat_amount} * i64::pow(10, {decimals}) / {answer}");
+    debug!("ANSWER3: {}", (fiat_amount as f64) * f64::powf(10f64, decimals as f64) * 10e18 / ((answer * 100) as f64));
+    Ok(
+        (
+            (fiat_amount as f64) *
+                f64::powf(10f64, decimals as f64) *
+                10e18 / ((answer * 100) as f64) *
+                (1.0 - readonly.config.our_tax)
+        ) as i128
+    )
 }
 
 #[post("/confirm-payment")]
@@ -211,7 +221,7 @@ pub async fn confirm_payment(
                         &ident.id()?.parse::<i64>()?,
                         &<Address>::from_str(&form.crypto_account)?.as_bytes(), // TODO: better error message (not error 500)
                         &fiat_amount,
-                        &collateral_amount,
+                        &collateral_amount.to_string(),
                         &form.bid_day,
                     ],
                 ).await?.get(0)
@@ -237,11 +247,12 @@ pub async fn confirm_payment(
         //     json!({"success": true})
         // }
         "canceled" | "payment_failed" => {
-            let collateral_amount: i64 = common.lock().await.db.query_one(
+            let collateral_amount: String = common.lock().await.db.query_one(
                 "SELECT crypto_amount FROM txs WHERE payment_intent_id=$1",
                 &[&form.payment_intent_id])
                 .await?
                 .get(0);
+            let collateral_amount = i128::from_str(collateral_amount.as_str())?;
             lock_funds((**common).clone(), -collateral_amount).await?;
             common.lock().await.db.execute(
                 "DELETE FROM txs WHERE payment_intent_id=$1",
