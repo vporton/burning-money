@@ -126,7 +126,6 @@ function PaymentForm(props: { bidDay: number }) {
     useEffect(() => {
         const fiatAmount_ = Math.floor(0.5 + (Number(fiatAmountRaw) * 100));
         setFiatAmount(fiatAmount_);
-        console.log("YYY", fiatAmount_)
         fetch(`${backendUrlPrefix}/fiat-to-crypto?fiat_amount=${encodeURIComponent(fiatAmount_)}`)
             .then(res => res.text())
             .then(wei => setCryptoAmount(wei));
