@@ -99,8 +99,10 @@ export default function Bid() {
             <p>You choose a future date for your bid. On or after this date you can withdraw
                 CardToken in amount equal the share of you bid among all bids on this date
                 multiplied by an exponent of time (for the day of bidding).</p>
-            <p style={{color: 'red'}}>If your bid happens in past time, it won't happen, and our current policy is no refunds!</p>
-            <p>Bid on: <Interval24Hours onChange={setDay}/></p>
+            <p style={{color: 'red'}}>You can bid only on a time interval that is entirely in the future.{" "}
+                If your bid will be not in the future (at the time our server processes it) bid money are lost,{" "}
+                and our current policy is no refunds!</p>
+            <p>Bid on: <Interval24Hours onChange={setDay} defaultValue={Math.floor(new Date().getTime() / (3600*24*1000)) + 1}/></p>
             <p>Your/total bid on this time interval: {utils.formatEther(myBid)} / {utils.formatEther(totalBid)} GLMR,
                 competing for {totalReward/1e18} CT.</p>
             <br/>
