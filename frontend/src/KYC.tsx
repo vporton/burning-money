@@ -6,10 +6,10 @@ export function Kyc() {
     const [accessToken, setAccessToken] = useState("");
 
     async function fetchAccessToken() {
-      const accessToken = await (await fetch(`${backendUrlPrefix}/kyc/access-token`, {method: 'POST', credentials: 'include'})).text();
-      console.log('accessToken:', accessToken);
-      return accessToken;
-  }
+        const accessToken = await (await fetch(`${backendUrlPrefix}/kyc/access-token`, {method: 'POST', credentials: 'include'})).text();
+        console.log('accessToken:', accessToken);
+        return accessToken;
+    }
 
     async function updateAccessToken() {
         setAccessToken(await fetchAccessToken());
@@ -20,23 +20,16 @@ export function Kyc() {
     }, []);
 
     return (accessToken !== "") ? <SumsubWebSdk
-    accessToken={accessToken}
-    // updateAccessToken={updateAccessToken}
-    expirationHandler={fetchAccessToken}
-    config={{
-        onMessage: (type, payload) => {
-          console.log("WebSDK onMessage", type, payload);
-        },
-        onError: (error) => {
-          console.error("WebSDK onError", error);
-        }
-      }}
-      options={{ addViewportTag: false, adaptIframeHeight: true }}
-      onMessage={(type, payload) => {
-        console.log("onMessage", type, payload);
-      }}
-      onError={(data) => console.log("onError", data)}
-      /> : <span/>;
+        accessToken={accessToken}
+        // updateAccessToken={updateAccessToken}
+        expirationHandler={fetchAccessToken}
+        config={{}}
+        options={{ addViewportTag: false, adaptIframeHeight: true }}
+        onMessage={(type, payload) => {
+            console.log("onMessage", type, payload);
+        }}
+        onError={(data) => console.log("onError", data)}
+    /> : <span/>;
 }
 
 // async function launchWebSdk(accessToken) {

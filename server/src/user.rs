@@ -7,21 +7,27 @@ use crate::{Common, MyError};
 use crate::errors::AuthenticationFailedError;
 
 #[get("/identity")]
-pub async fn user_identity(user: Option<Identity>) -> impl Responder {
+pub async fn user_identity(user: Option<Identity>, common: web::Data<Arc<Mutex<Common>>>) -> Result<impl Responder, MyError> {
     #[derive(Serialize)]
     struct MyIdentity {
-        id: Option<String>,
+        id: Option<i64>,
+        kyc: bool,
     }
     let result = if let Some(user) = user {
+        let id = user.id()?.parse::<i64>()?;
+        let conn = &common.lock().await.db;
+        let kyc = conn.query_one("SELECT passed_kyc FROM users WHERE id=$1", &[&id]).await?.get(0);
         MyIdentity {
-            id: Some(user.id().unwrap()),
+            id: Some(id),
+            kyc,
         }
     } else {
         MyIdentity {
-            id: None
+            id: None,
+            kyc: false,
         }
     };
-    web::Json(result)
+    Ok(web::Json(result))
 }
 
 #[get("/email")]

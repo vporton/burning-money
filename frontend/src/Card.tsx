@@ -9,10 +9,12 @@ import { Kyc } from './KYC';
 
 export default function Card(props: { bidDay: number }) {
     const [user, setUser] = useState<string | null>(null);
+    const [passedKyc, setPassedKyc] = useState(true); // don't show by default
     fetch(backendUrlPrefix + "/identity", {credentials: 'include'})
         .then(u => u.json())
         .then(u => {
             setUser(u.id);
+            setPassedKyc(u.kyc);
         });
     function logout() {
         window.fetch(backendUrlPrefix + "/logout", {
@@ -31,7 +33,7 @@ export default function Card(props: { bidDay: number }) {
                 <a href='#' onClick={logout}>Logout</a>
             </>
         }
-        <Kyc/>
+        {passedKyc ? "" : <Kyc/>}
         <p>You mine CardToken by using a credit card or a bank account (unlike Bitcoin that is mined by costly equipment).</p>
         <p>To mine an amount of CardToken corresponding to a certain amount of money, pay any amount of money.</p>
         {user !== null ? <PaymentForm bidDay={props.bidDay}/> : ""}
