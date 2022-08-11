@@ -56,17 +56,18 @@ pub async fn sumsub_generate_access_token(
 ) -> Result<String, MyError>
 {
     let conn = &common.lock().await.db;
-    let email: String = conn.query_one("SELECT email FROM users WHERE id=$1", &[&ident.id()?]).await?.get(0);
+    let id = ident.id()?.parse::<i64>()?;
+    let email: String = conn.query_one("SELECT email FROM users WHERE id=$1", &[&id]).await?.get(0);
     let client = Client::new();
     let url = format!("https://api.sumsub.com/resources/applicants?levelName=basic-kyc-level");
-    let body = json!({"externalUserId": ident.id()?, "email": email});
+    let body = json!({"externalUserId": id.to_string(), "email": email});
     let mut request = Request::new(Method::POST, Url::parse(url.as_str())?);
     *request.body_mut() = Some(body.to_string().into());
     modify_request(&*readonly, &mut request)?;
     let _res = client.execute(request).await?; // TODO: What they return on first and on second request?
     let url = format!(
         "https://api.sumsub.com/resources/accessTokens?userId={}&levelName=basic-kyc-level",
-        ident.id()?,
+        id,
     );
     let mut request = Request::new(Method::POST, Url::parse(url.as_str())?);
     modify_request(&*readonly, &mut request)?;

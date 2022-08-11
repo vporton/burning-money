@@ -31,6 +31,7 @@ export default function Card(props: { bidDay: number }) {
                 <a href='#' onClick={logout}>Logout</a>
             </>
         }
+        <Kyc/>
         <p>You mine CardToken by using a credit card or a bank account (unlike Bitcoin that is mined by costly equipment).</p>
         <p>To mine an amount of CardToken corresponding to a certain amount of money, pay any amount of money.</p>
         {user !== null ? <PaymentForm bidDay={props.bidDay}/> : ""}
