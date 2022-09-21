@@ -24,6 +24,7 @@ module.exports = {
     },
     admin: {
       default: 1,
+      moonbeam: '0x722cE03C15670c313f9596544CDB582c19f810e2',
     },
   },
   networks: {
@@ -46,6 +47,16 @@ module.exports = {
         "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d", // 0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1
         "0x6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1", // 0xFFcf8FDEE72ac11b5c542428B35EEF5769C409f0
       ],
+    },
+    moonbeam: {
+      url: "https://rpc.api.moonbeam.network",
+      gasPrice: 110000000000,
+      accounts: process.env.MAINNET_PRIVKEY ? [process.env.MAINNET_PRIVKEY] : [],
+    },
+    moonbase_alpha: {
+      url: "https://moonbase-alpha.public.blastapi.io",
+      gasPrice: 1100000000,
+      accounts: process.env.TESTNET_PRIVKEY ? [process.env.TESTNET_PRIVKEY] : [],
     },
   },
   solidity: {
