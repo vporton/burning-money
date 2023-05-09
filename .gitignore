@@ -1,5 +1,6 @@
 .idea/
 .~*#
+*.priv
 
 node_modules
 .env
