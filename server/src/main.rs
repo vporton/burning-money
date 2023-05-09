@@ -32,8 +32,9 @@ use tokio_postgres::NoTls;
 use web3::api::Namespace;
 use web3::api::EthFilter;
 use actix_web::get;
+use anyhow::anyhow;
 use hex::ToHex;
-use crate::errors::{CannotLoadDataError, MyError, StripeError};
+use crate::errors::{MyError, StripeError};
 use crate::kyc_sumsub::sumsub_generate_access_token;
 use crate::models::Tx;
 use crate::pages::{about_us, not_found};
@@ -365,7 +366,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let config2 = config.clone();
 
     let addresses: Value = serde_json::from_str(fs::read_to_string(config.addresses_file.as_str())?.as_str())?;
-    let addresses = addresses.get(&config.ethereum_network).ok_or(CannotLoadDataError::new())?;
+    let addresses = addresses.get(&config.ethereum_network).ok_or(anyhow!("Cannot get Ethereum network"))?;
 
     let transport = Http::new(&config2.ethereum_endpoint)?;
 
@@ -373,8 +374,8 @@ async fn main() -> Result<(), anyhow::Error> {
         config,
         ethereum_key: Arc::new(eth_account),
         addresses: Addresses {
-            token: <Address>::from_str(addresses.get("Token").ok_or(CannotLoadDataError::new())?.as_str().ok_or(CannotLoadDataError::new())?)?,
-            collateral_oracle: <Address>::from_str(addresses.get("collateralOracle").ok_or(CannotLoadDataError::new())?.as_str().ok_or(CannotLoadDataError::new())?)?,
+            token: <Address>::from_str(addresses.get("Token").ok_or(anyhow!("Cannot get Token address"))?.as_str().ok_or(anyhow!("Cannot get Token address"))?)?,
+            collateral_oracle: <Address>::from_str(addresses.get("collateralOracle").ok_or(anyhow!("Cannot get collateralOracle address"))?.as_str().ok_or(anyhow!("Cannot get collateralOracle address"))?)?,
         },
         web3: {
             Web3::new(transport)

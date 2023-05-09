@@ -56,16 +56,6 @@ impl StripeError {
 }
 
 #[derive(Error, Debug)]
-#[error("Cannot load data.")]
-pub struct CannotLoadDataError;
-
-impl CannotLoadDataError {
-    pub fn new() -> Self {
-        Self { }
-    }
-}
-
-#[derive(Error, Debug)]
 pub enum MyErrorBase {
     Interrupt(InterruptError),
     Template(askama::Error),
@@ -95,7 +85,6 @@ pub enum MyErrorBase {
     TokioPostgres(tokio_postgres::Error),
     AsyncChannelSendEmpty(async_channel::SendError<()>),
     Stripe(StripeError),
-    CannotLoadData(CannotLoadDataError),
     KYC(KYCError),
     UrlParse(url::ParseError),
     ActixHeaderToStr(ToStrError),
@@ -165,7 +154,6 @@ impl Display for MyErrorBase {
             Self::TokioPostgres(err) => write!(f, "Postgres error: {}", err),
             Self::AsyncChannelSendEmpty(err) => write!(f, "Async send error: {}", err),
             Self::Stripe(_) => write!(f, "Stripe API failed."),
-            Self::CannotLoadData(_) => write!(f, "Cannot load data."),
             Self::KYC(_) => write!(f, "KYC didn't pass."),
             Self::UrlParse(err) => write!(f, "URL parse error: {}", err),
             Self::ActixHeaderToStr(err) => write!(f, "Converting header to string: {}", err),
@@ -359,12 +347,6 @@ impl From<StripeError> for MyErrorBase {
     }
 }
 
-impl From<CannotLoadDataError> for MyErrorBase {
-    fn from(value: CannotLoadDataError) -> Self {
-        Self::CannotLoadData(value)
-    }
-}
-
 impl From<KYCError> for MyErrorBase {
     fn from(value: KYCError) -> Self {
         Self::KYC(value)
@@ -531,12 +513,6 @@ impl From<async_channel::SendError<()>> for MyError {
 
 impl From<StripeError> for MyError {
     fn from(value: StripeError) -> Self {
-        MyError { err: Box::new(value.into()) }
-    }
-}
-
-impl From<CannotLoadDataError> for MyError {
-    fn from(value: CannotLoadDataError) -> Self {
         MyError { err: Box::new(value.into()) }
     }
 }
