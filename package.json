@@ -12,7 +12,7 @@
     "@openzeppelin/contracts": "^3.2.0",
     "abdk-libraries-solidity": "^3.0.0",
     "hardhat": "^2.9.7",
-    "hardhat-deploy": "^0.11.10",
+    "hardhat-deploy": "^0.14.0",
     "mexa": "git+https://github.com/bcnmy/mexa",
     "openzeppelin-solidity": "^4.6.0"
   },
