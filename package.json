@@ -10,7 +10,7 @@
   "dependencies": {
     "@chainlink/contracts": "^0.4.1",
     "@openzeppelin/contracts": "^3.2.0",
-    "abdk-libraries-solidity": "^3.0.0",
+    "abdk-libraries-solidity": "^3.2.0",
     "hardhat": "^2.9.7",
     "hardhat-deploy": "^0.11.10",
     "mexa": "git+https://github.com/bcnmy/mexa",
